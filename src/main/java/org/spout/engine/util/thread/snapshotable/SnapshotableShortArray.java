@@ -44,11 +44,11 @@ public class SnapshotableShortArray implements Snapshotable {
 	private final int dirtySize;
 	private final AtomicInteger dirtyIndex = new AtomicInteger(0);
 
-	public SnapshotableShortArray(SnapshotManager manager, short[] initial) {
-		this(manager, initial, 50);
+	public SnapshotableShortArray(short[] initial) {
+		this(initial, 50);
 	}
 
-	public SnapshotableShortArray(SnapshotManager manager, short[] initial, int dirtySize) {
+	public SnapshotableShortArray(short[] initial, int dirtySize) {
 		snapshot = new short[initial.length];
 		live = new AtomicIntegerArray(initial.length >> 1);
 		this.dirtySize = dirtySize;

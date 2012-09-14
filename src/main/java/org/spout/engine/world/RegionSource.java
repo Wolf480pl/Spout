@@ -43,7 +43,6 @@ import org.spout.api.util.thread.DelayedWrite;
 import org.spout.api.util.thread.LiveRead;
 import org.spout.engine.scheduler.SpoutParallelTaskManager;
 import org.spout.engine.scheduler.SpoutScheduler;
-import org.spout.engine.util.thread.snapshotable.SnapshotManager;
 
 public class RegionSource implements Iterable<Region> {
 	private final static int REGION_MAP_BITS = 5;
@@ -59,7 +58,7 @@ public class RegionSource implements Iterable<Region> {
 	 */
 	private final SpoutWorld world;
 
-	public RegionSource(SpoutWorld world, SnapshotManager snapshotManager) {
+	public RegionSource(SpoutWorld world) {
 		this.world = world;
 		loadedRegions = new TripleIntObjectReferenceArrayMap<Region>(REGION_MAP_BITS);
 	}

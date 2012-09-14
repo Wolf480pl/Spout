@@ -43,10 +43,22 @@ public class SnapshotableReference<T> implements Snapshotable {
 	private AtomicReference<T> next = new AtomicReference<T>();
 	private T snapshot;
 
-	public SnapshotableReference(SnapshotManager manager, T initial) {
+	public SnapshotableReference(T initial) {
 		next.set(initial);
 		snapshot = initial;
-		manager.add(this);
+	}
+
+	public SnapshotableReference() {
+		this(null);
+	}
+
+	/**
+	 * Checks if the snapshot value does not equal the next value.
+	 * 
+	 * @return true if the object is dirty
+	 */
+	public boolean isDirty() {
+		return next.get() != snapshot;
 	}
 
 	/**

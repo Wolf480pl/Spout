@@ -37,10 +37,9 @@ public class SnapshotableDouble implements Snapshotable {
 	private volatile double next;
 	private double snapshot;
 
-	public SnapshotableDouble(SnapshotManager manager, double initial) {
+	public SnapshotableDouble(double initial) {
 		next = initial;
 		snapshot = initial;
-		manager.add(this);
 	}
 
 	/**

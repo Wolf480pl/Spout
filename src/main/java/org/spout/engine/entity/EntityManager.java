@@ -38,7 +38,6 @@ import org.spout.api.entity.Player;
 import org.spout.api.math.MathHelper;
 import org.spout.api.protocol.NetworkSynchronizer;
 
-import org.spout.engine.util.thread.snapshotable.SnapshotManager;
 import org.spout.engine.util.thread.snapshotable.SnapshotableHashMap;
 import org.spout.engine.world.SpoutRegion;
 
@@ -47,13 +46,9 @@ import org.spout.engine.world.SpoutRegion;
  */
 public class EntityManager {
 	/**
-	 * The snapshot manager
-	 */
-	protected final SnapshotManager snapshotManager = new SnapshotManager();
-	/**
 	 * A map of all the entity ids to the corresponding entities.
 	 */
-	private final SnapshotableHashMap<Integer, SpoutEntity> entities = new SnapshotableHashMap<Integer, SpoutEntity>(snapshotManager);
+	private final SnapshotableHashMap<Integer, SpoutEntity> entities = new SnapshotableHashMap<Integer, SpoutEntity>();
 
 	/**
 	 * The next id to check.
@@ -67,7 +62,7 @@ public class EntityManager {
 	/**
 	 * Player listings plus listings of sync'd entities per player
 	 */
-	private final SnapshotableHashMap<Player, ArrayList<SpoutEntity>> players = new SnapshotableHashMap<Player, ArrayList<SpoutEntity>>(snapshotManager);
+	private final SnapshotableHashMap<Player, ArrayList<SpoutEntity>> players = new SnapshotableHashMap<Player, ArrayList<SpoutEntity>>();
 
 	public EntityManager(SpoutRegion region) {
 		if (region == null) {
@@ -223,7 +218,8 @@ public class EntityManager {
 		for (SpoutEntity e : entities.get().values()) {
 			e.copySnapshot();
 		}
-		snapshotManager.copyAllSnapshots();
+		entities.copySnapshot();
+		players.copySnapshot();
 	}
 
 	/**

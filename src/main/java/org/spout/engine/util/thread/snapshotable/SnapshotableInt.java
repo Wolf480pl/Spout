@@ -37,10 +37,9 @@ public class SnapshotableInt implements Snapshotable {
 	private volatile int next;
 	private int snapshot;
 
-	public SnapshotableInt(SnapshotManager manager, int initial) {
+	public SnapshotableInt(int initial) {
 		next = initial;
 		snapshot = initial;
-		manager.add(this);
 	}
 
 	/**

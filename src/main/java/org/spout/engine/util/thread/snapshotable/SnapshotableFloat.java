@@ -37,10 +37,9 @@ public class SnapshotableFloat implements Snapshotable {
 	private volatile float next;
 	private float snapshot;
 
-	public SnapshotableFloat(SnapshotManager manager, float initial) {
+	public SnapshotableFloat(float initial) {
 		next = initial;
 		snapshot = initial;
-		manager.add(this);
 	}
 
 	/**

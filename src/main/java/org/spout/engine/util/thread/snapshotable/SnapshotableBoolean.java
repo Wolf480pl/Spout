@@ -39,10 +39,9 @@ public class SnapshotableBoolean implements Snapshotable {
 	private AtomicBoolean next;
 	private boolean snapshot;
 
-	public SnapshotableBoolean(SnapshotManager manager, boolean initial) {
+	public SnapshotableBoolean(boolean initial) {
 		next = new AtomicBoolean(initial);
 		snapshot = initial;
-		manager.add(this);
 	}
 
 	/**

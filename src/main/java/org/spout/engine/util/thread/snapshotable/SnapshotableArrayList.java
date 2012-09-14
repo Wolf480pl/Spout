@@ -44,18 +44,17 @@ public class SnapshotableArrayList<T> implements Snapshotable {
 	private final List<T> snapshot;
 	private final List<T> live;
 
-	public SnapshotableArrayList(SnapshotManager manager) {
-		this(manager, null);
+	public SnapshotableArrayList() {
+		this(null);
 	}
 
-	public SnapshotableArrayList(SnapshotManager manager, ArrayList<T> initial) {
+	public SnapshotableArrayList(ArrayList<T> initial) {
 		if (initial != null) {
 			snapshot = new ArrayList<T>(initial);
 		} else {
 			snapshot = new ArrayList<T>();
 		}
 		live = Collections.synchronizedList(new ArrayList<T>(snapshot));
-		manager.add(this);
 	}
 
 	/**

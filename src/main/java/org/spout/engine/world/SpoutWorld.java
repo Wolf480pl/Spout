@@ -48,7 +48,7 @@ import org.spout.api.collision.BoundingBox;
 import org.spout.api.collision.CollisionModel;
 import org.spout.api.collision.CollisionVolume;
 import org.spout.api.component.BaseComponentHolder;
-import org.spout.api.component.Component;
+import org.spout.api.component.BaseComponent;
 import org.spout.api.component.ComponentHolder;
 import org.spout.api.component.components.BlockComponent;
 import org.spout.api.entity.Entity;
@@ -97,11 +97,9 @@ import org.spout.engine.scheduler.SpoutTaskManager;
 import org.spout.engine.util.thread.AsyncExecutor;
 import org.spout.engine.util.thread.AsyncManager;
 import org.spout.engine.util.thread.ThreadAsyncExecutor;
-import org.spout.engine.util.thread.snapshotable.SnapshotManager;
 import org.spout.engine.util.thread.snapshotable.SnapshotableLong;
 
 public class SpoutWorld extends AsyncManager implements World {
-	private SnapshotManager snapshotManager = new SnapshotManager();
 	/**
 	 * The server of this world.
 	 */
@@ -133,7 +131,7 @@ public class SpoutWorld extends AsyncManager implements World {
 	/**
 	 * The current world age.
 	 */
-	private SnapshotableLong age;
+	private SnapshotableLong age = new SnapshotableLong(0);
 	/**
 	 * The generator responsible for generating chunks in this world.
 	 */
@@ -198,7 +196,7 @@ public class SpoutWorld extends AsyncManager implements World {
 		this.seed = seed;
 
 		this.generator = generator;
-		regions = new RegionSource(this, snapshotManager);
+		regions = new RegionSource(this);
 
 		worldDirectory = new File(SharedFileSystem.WORLDS_DIRECTORY, name);
 		worldDirectory.mkdirs();
@@ -220,7 +218,8 @@ public class SpoutWorld extends AsyncManager implements World {
 			throw new IllegalStateException("AsyncExecutor should be instance of Thread");
 		}
 
-		this.age = new SnapshotableLong(snapshotManager, age);
+		this.age.set(age);
+		this.age.copySnapshot();
 		taskManager = new SpoutTaskManager(getEngine().getScheduler(), false, t, age);
 		spawnLocation.set(new Transform(new Point(this, 1, 100, 1), Quaternion.IDENTITY, Vector3.ONE));
 		selfReference = new WeakReference<World>(this);
@@ -527,7 +526,7 @@ public class SpoutWorld extends AsyncManager implements World {
 	}
 
 	@Override
-	public Entity createEntity(Point point, Class<? extends Component> type) {
+	public Entity createEntity(Point point, Class<? extends BaseComponent> type) {
 		SpoutEntity entity = new SpoutEntity(point);
 		entity.add(type);
 		return entity;
@@ -557,7 +556,7 @@ public class SpoutWorld extends AsyncManager implements World {
 	}
 
 	@Override
-	public Entity createAndSpawnEntity(Point point, Class<? extends Component> type, LoadOption option) {
+	public Entity createAndSpawnEntity(Point point, Class<? extends BaseComponent> type, LoadOption option) {
 		getRegionFromBlock(point, option);
 		Entity e = createEntity(point, type);
 		spawnEntity(e);
@@ -565,7 +564,7 @@ public class SpoutWorld extends AsyncManager implements World {
 	}
 
 	@Override
-	public Entity[] createAndSpawnEntity(Point[] points, Class<? extends Component> type, LoadOption option) {
+	public Entity[] createAndSpawnEntity(Point[] points, Class<? extends BaseComponent> type, LoadOption option) {
 		Entity[] entities = new Entity[points.length];
 		for (int i = 0; i < points.length; i++) {
 			entities[i] = createAndSpawnEntity(points[i], type, option);
@@ -574,13 +573,13 @@ public class SpoutWorld extends AsyncManager implements World {
 	}
 
 	@Override
-	public Entity[] createAndSpawnEntity(SpawnArrangement arrangement, Class<? extends Component> type, LoadOption option) {
+	public Entity[] createAndSpawnEntity(SpawnArrangement arrangement, Class<? extends BaseComponent> type, LoadOption option) {
 		return createAndSpawnEntity(arrangement.getArrangement(), type, option);
 	}
 
 	@Override
 	public void copySnapshotRun() throws InterruptedException {
-		snapshotManager.copyAllSnapshots();
+		age.copySnapshot();
 	}
 
 	@Override

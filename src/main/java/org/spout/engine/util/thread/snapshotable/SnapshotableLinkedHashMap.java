@@ -57,8 +57,7 @@ public class SnapshotableLinkedHashMap<K, V> implements Snapshotable {
 	private final List<K> unmodifyDirty = Collections.unmodifiableList(dirtyList);
 	private boolean dirtyListGenerated = false;
 
-	public SnapshotableLinkedHashMap(SnapshotManager manager) {
-		manager.add(this);
+	public SnapshotableLinkedHashMap() {
 	}
 
 	/**

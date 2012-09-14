@@ -53,14 +53,13 @@ public class SnapshotableTripleIntHashMap<V> implements Snapshotable {
 	private final TUnmodifiableInt21TripleObjectHashMap<V> unmutableSnapshot;
 	private final TUnmodifiableInt21TripleObjectHashMap<V> unmutableLive;
 
-	public SnapshotableTripleIntHashMap(SnapshotManager manager) {
+	public SnapshotableTripleIntHashMap() {
 		live = new TInt21TripleObjectHashMap<V>();
 		snapshot = new TInt21TripleObjectHashMap<V>();
 		unmutableSnapshot = new TUnmodifiableInt21TripleObjectHashMap<V>(snapshot);
 		unmutableLive = new TUnmodifiableInt21TripleObjectHashMap<V>(live);
 		dirtyQueue = new ConcurrentLinkedQueue<TripleInt>();
 		dirtyMap = new ConcurrentHashMap<TripleInt, Boolean>();
-		manager.add(this);
 	}
 
 	/**

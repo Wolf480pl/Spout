@@ -89,7 +89,6 @@ import org.spout.engine.scheduler.SpoutTaskManager;
 import org.spout.engine.util.TripleInt;
 import org.spout.engine.util.thread.AsyncExecutor;
 import org.spout.engine.util.thread.ThreadAsyncExecutor;
-import org.spout.engine.util.thread.snapshotable.SnapshotManager;
 import org.spout.engine.world.dynamic.DynamicBlockUpdate;
 import org.spout.engine.world.dynamic.DynamicBlockUpdateTree;
 
@@ -128,10 +127,6 @@ public class SpoutRegion extends Region {
 	 * The source of this region
 	 */
 	private final RegionSource source;
-	/**
-	 * Snapshot manager for this region
-	 */
-	protected SnapshotManager snapshotManager = new SnapshotManager();
 	/**
 	 * Holds all of the entities to be simulated
 	 */
@@ -482,8 +477,6 @@ public class SpoutRegion extends Region {
 			}
 		}
 
-		snapshotManager.copyAllSnapshots();
-
 		boolean empty = false;
 		TripleInt chunkCoords;
 		while ((chunkCoords = saveMarked.poll()) != null) {
@@ -506,7 +499,6 @@ public class SpoutRegion extends Region {
 		}
 
 		// Updates on nulled chunks
-		snapshotManager.copyAllSnapshots();
 
 		if (empty) {
 			source.removeRegion(this);

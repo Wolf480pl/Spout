@@ -37,10 +37,9 @@ public class SnapshotableByte implements Snapshotable {
 	private volatile byte next;
 	private byte snapshot;
 
-	public SnapshotableByte(SnapshotManager manager, byte initial) {
+	public SnapshotableByte(byte initial) {
 		next = initial;
 		snapshot = initial;
-		manager.add(this);
 	}
 
 	/**

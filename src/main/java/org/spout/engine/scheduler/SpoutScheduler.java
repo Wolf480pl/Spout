@@ -56,7 +56,6 @@ import org.spout.engine.util.thread.AsyncExecutor;
 import org.spout.engine.util.thread.AsyncExecutorUtils;
 import org.spout.engine.util.thread.ThreadsafetyManager;
 import org.spout.engine.util.thread.lock.SpoutSnapshotLock;
-import org.spout.engine.util.thread.snapshotable.SnapshotManager;
 import org.spout.engine.util.thread.snapshotable.SnapshotableArrayList;
 
 /**
@@ -119,13 +118,9 @@ public final class SpoutScheduler implements Scheduler {
 	 */
 	private final Engine engine;
 	/**
-	 * A snapshot manager for local snapshot variables
-	 */
-	private final SnapshotManager snapshotManager = new SnapshotManager();
-	/**
 	 * A list of all AsyncManagers
 	 */
-	private final SnapshotableArrayList<AsyncExecutor> asyncExecutors = new SnapshotableArrayList<AsyncExecutor>(snapshotManager, null);
+	private final SnapshotableArrayList<AsyncExecutor> asyncExecutors = new SnapshotableArrayList<AsyncExecutor>(null);
 	/**
 	 * Update count for physics and dynamic updates
 	 */

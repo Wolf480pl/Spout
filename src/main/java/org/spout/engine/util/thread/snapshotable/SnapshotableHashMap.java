@@ -51,8 +51,7 @@ public class SnapshotableHashMap<K, V> implements Snapshotable {
 	private final ConcurrentLinkedQueue<K> dirtyKeys = new ConcurrentLinkedQueue<K>();
 	private final ConcurrentLinkedQueue<V> dirtyValues = new ConcurrentLinkedQueue<V>();
 
-	public SnapshotableHashMap(SnapshotManager manager) {
-		manager.add(this);
+	public SnapshotableHashMap() {
 	}
 
 	/**

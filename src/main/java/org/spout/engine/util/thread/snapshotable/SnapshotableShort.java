@@ -37,10 +37,9 @@ public class SnapshotableShort implements Snapshotable {
 	private volatile short next;
 	private short snapshot;
 
-	public SnapshotableShort(SnapshotManager manager, short initial) {
+	public SnapshotableShort(short initial) {
 		next = initial;
 		snapshot = initial;
-		manager.add(this);
 	}
 
 	/**

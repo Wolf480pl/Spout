@@ -32,6 +32,7 @@ import java.util.HashSet;
 
 import org.spout.api.Source;
 import org.spout.api.component.BaseComponentHolder;
+import org.spout.api.component.BaseComponent;
 import org.spout.api.component.Component;
 import org.spout.api.component.components.EntityComponent;
 import org.spout.api.component.components.NetworkComponent;
@@ -51,11 +52,10 @@ import org.spout.api.util.OutwardIterator;
 import org.spout.api.util.thread.DelayedWrite;
 import org.spout.api.util.thread.SnapshotRead;
 import org.spout.engine.SpoutConfiguration;
-import org.spout.engine.util.thread.snapshotable.SnapshotManager;
 import org.spout.engine.util.thread.snapshotable.Snapshotable;
 import org.spout.engine.util.thread.snapshotable.SnapshotableBoolean;
 import org.spout.engine.util.thread.snapshotable.SnapshotableInt;
-import org.spout.engine.util.thread.snapshotable.SnapshotableObject;
+import org.spout.engine.util.thread.snapshotable.SnapshotableReference;
 import org.spout.engine.world.SpoutChunk;
 import org.spout.engine.world.SpoutRegion;
 
@@ -63,14 +63,13 @@ public class SpoutEntity extends BaseComponentHolder implements Entity, Snapshot
 	public static final int NOTSPAWNEDID = -1;
 
 	//Snapshot
-	private final SnapshotManager snapshotManager = new SnapshotManager();
-	private SnapshotableObject<Chunk> chunk = new SnapshotableObject<Chunk>(snapshotManager);
-	private SnapshotableObject<EntityManager> entityManager = new SnapshotableObject<EntityManager>(snapshotManager);
-	private SnapshotableBoolean observer = new SnapshotableBoolean(snapshotManager, false);
-	private SnapshotableBoolean remove = new SnapshotableBoolean(snapshotManager, false);
-	private SnapshotableBoolean save = new SnapshotableBoolean(snapshotManager, false);
-	private SnapshotableInt id = new SnapshotableInt(snapshotManager, NOTSPAWNEDID);
-	private SnapshotableInt viewDistance = new SnapshotableInt(snapshotManager, 0);
+	private SnapshotableReference<Chunk> chunk = new SnapshotableReference<Chunk>();
+	private SnapshotableReference<EntityManager> entityManager = new SnapshotableReference<EntityManager>();
+	private SnapshotableBoolean observer = new SnapshotableBoolean(false);
+	private SnapshotableBoolean remove = new SnapshotableBoolean(false);
+	private SnapshotableBoolean save = new SnapshotableBoolean(false);
+	private SnapshotableInt id = new SnapshotableInt(NOTSPAWNEDID);
+	private SnapshotableInt viewDistance = new SnapshotableInt(0);
 
 	//Other
 	private final Set<SpoutChunk> observingChunks = new HashSet<SpoutChunk>();
@@ -79,7 +78,7 @@ public class SpoutEntity extends BaseComponentHolder implements Entity, Snapshot
 
 	public SpoutEntity(Transform transform, int viewDistance, UUID uid, boolean load) {
 		id.set(NOTSPAWNEDID);
-		add(TransformComponent.class);
+		add(SpoutTransformComponent.class);
 		add(NetworkComponent.class);
 		
 		if (uid != null) {
@@ -283,7 +282,13 @@ public class SpoutEntity extends BaseComponentHolder implements Entity, Snapshot
 
 	@Override
 	public void copySnapshot() {
-		snapshotManager.copyAllSnapshots();
+		chunk.copySnapshot();
+		entityManager.copySnapshot();
+		observer.copySnapshot();
+		remove.copySnapshot();
+		save.copySnapshot();
+		id.copySnapshot();
+		viewDistance.copySnapshot();
 		getTransform().copySnapshot();
 		justSpawned = false;
 	}
@@ -318,8 +323,8 @@ public class SpoutEntity extends BaseComponentHolder implements Entity, Snapshot
 	}
 	
 	@Override
-	public TransformComponent getTransform() {
-		return get(TransformComponent.class);
+	public SpoutTransformComponent getTransform() {
+		return get(SpoutTransformComponent.class);
 	}
 
 	@Override

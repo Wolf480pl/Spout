@@ -41,11 +41,11 @@ public class SnapshotableByteArray implements Snapshotable {
 	private final int[] dirtyArray;
 	private final AtomicInteger dirtyIndex = new AtomicInteger(0);
 
-	public SnapshotableByteArray(SnapshotManager manager, byte[] initial) {
-		this(manager, initial, 100);
+	public SnapshotableByteArray(byte[] initial) {
+		this(initial, 100);
 	}
 
-	public SnapshotableByteArray(SnapshotManager manager, byte[] initial, int dirtySize) {
+	public SnapshotableByteArray(byte[] initial, int dirtySize) {
 		snapshot = new byte[initial.length];
 		live = new byte[initial.length];
 		dirtyArray = new int[dirtySize];

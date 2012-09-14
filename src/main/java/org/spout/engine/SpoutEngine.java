@@ -119,7 +119,6 @@ import org.spout.engine.util.DeadlockMonitor;
 import org.spout.engine.util.TicklockMonitor;
 import org.spout.engine.util.thread.AsyncManager;
 import org.spout.engine.util.thread.ThreadAsyncExecutor;
-import org.spout.engine.util.thread.snapshotable.SnapshotManager;
 import org.spout.engine.util.thread.snapshotable.SnapshotableLinkedHashMap;
 import org.spout.engine.util.thread.snapshotable.SnapshotableReference;
 import org.spout.engine.world.SpoutRegion;
@@ -140,8 +139,7 @@ public abstract class SpoutEngine extends AsyncManager implements Engine {
 	private final EventManager eventManager = new SimpleEventManager();
 	private final RecipeManager recipeManager = new CommonRecipeManager();
 	private final ServiceManager serviceManager = CommonServiceManager.getInstance();
-	private final SnapshotManager snapshotManager = new SnapshotManager();
-	protected final SnapshotableLinkedHashMap<String, SpoutPlayer> players = new SnapshotableLinkedHashMap<String, SpoutPlayer>(snapshotManager);
+	protected final SnapshotableLinkedHashMap<String, SpoutPlayer> players = new SnapshotableLinkedHashMap<String, SpoutPlayer>();
 	private final WorldGenerator defaultGenerator = new EmptyWorldGenerator();
 	protected final SpoutSessionRegistry sessions = new SpoutSessionRegistry();
 	protected final SpoutScheduler scheduler = new SpoutScheduler(this);
@@ -152,10 +150,10 @@ public abstract class SpoutEngine extends AsyncManager implements Engine {
 	private final CompletionManager completions = new CompletionManagerImpl();
 	private final SyncedRootCommand rootCommand = new SyncedRootCommand(this);
 	private final File worldFolder = new File(".");
-	private final SnapshotableLinkedHashMap<String, SpoutWorld> loadedWorlds = new SnapshotableLinkedHashMap<String, SpoutWorld>(snapshotManager);
-	private final SnapshotableReference<World> defaultWorld = new SnapshotableReference<World>(snapshotManager, null);
+	private final SnapshotableLinkedHashMap<String, SpoutWorld> loadedWorlds = new SnapshotableLinkedHashMap<String, SpoutWorld>();
+	private final SnapshotableReference<World> defaultWorld = new SnapshotableReference<World>(null);
 	protected final ConcurrentMap<SocketAddress, Protocol> boundProtocols = new ConcurrentHashMap<SocketAddress, Protocol>();
-	protected final SnapshotableLinkedHashMap<String, SpoutPlayer> onlinePlayers = new SnapshotableLinkedHashMap<String, SpoutPlayer>(snapshotManager);
+	protected final SnapshotableLinkedHashMap<String, SpoutPlayer> onlinePlayers = new SnapshotableLinkedHashMap<String, SpoutPlayer>();
 	private String logFile;
 	private StringMap engineItemMap = null;
 	private StringMap engineBiomeMap = null;
@@ -608,7 +606,11 @@ public abstract class SpoutEngine extends AsyncManager implements Engine {
 
 	@Override
 	public void copySnapshotRun() throws InterruptedException {
-		snapshotManager.copyAllSnapshots();
+		players.copySnapshot();
+		onlinePlayers.copySnapshot();
+		loadedWorlds.copySnapshot();
+		defaultWorld.copySnapshot();
+		
 		for (Player player : players.get().values()) {
 			((SpoutPlayer) player).copySnapshot();
 		}

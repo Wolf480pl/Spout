@@ -50,17 +50,16 @@ public class SnapshotableHashSet<T> implements Snapshotable {
 	private final ConcurrentLinkedQueue<T> dirty = new ConcurrentLinkedQueue<T>();
 	private final ArrayList<T> dirtyList = new ArrayList<T>();
 
-	public SnapshotableHashSet(SnapshotManager manager) {
-		this(manager, null);
+	public SnapshotableHashSet() {
+		this(null);
 	}
 
-	public SnapshotableHashSet(SnapshotManager manager, HashSet<T> initial) {
+	public SnapshotableHashSet(HashSet<T> initial) {
 		if (initial != null) {
 			for (T o : initial) {
 				add(o);
 			}
 		}
-		manager.add(this);
 	}
 
 	/**

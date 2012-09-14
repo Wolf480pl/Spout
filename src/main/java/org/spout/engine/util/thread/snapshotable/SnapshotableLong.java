@@ -37,10 +37,9 @@ public class SnapshotableLong implements Snapshotable {
 	private volatile long next;
 	private long snapshot;
 
-	public SnapshotableLong(SnapshotManager manager, long initial) {
+	public SnapshotableLong(long initial) {
 		next = initial;
 		snapshot = initial;
-		manager.add(this);
 	}
 
 	/**
