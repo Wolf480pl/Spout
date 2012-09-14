@@ -26,23 +26,24 @@
  */
 package org.spout.engine.util.thread.snapshotable;
 
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.spout.api.util.thread.DelayedWrite;
 import org.spout.api.util.thread.LiveRead;
 import org.spout.api.util.thread.SnapshotRead;
 
-/**
- * A snapshotable object that supports primitive booleans
- */
-public class SnapshotableBoolean implements Snapshotable {
-	private AtomicBoolean next;
-	private boolean snapshot;
+public class SnapshotableObject<T> implements Snapshotable {
+	private AtomicReference<T> next;
+	private T snapshot;
 
-	public SnapshotableBoolean(SnapshotManager manager, boolean initial) {
-		next = new AtomicBoolean(initial);
+	public SnapshotableObject(SnapshotManager manager, T initial) {
+		next = new AtomicReference<T>(initial);
 		snapshot = initial;
 		manager.add(this);
+	}
+
+	public SnapshotableObject(SnapshotManager snapshotManager) {
+		this(snapshotManager, null);
 	}
 
 	/**
@@ -51,7 +52,7 @@ public class SnapshotableBoolean implements Snapshotable {
 	 * @return true if the object is dirty
 	 */
 	public boolean isDirty() {
-		return next.get() != snapshot;
+		return next != snapshot;
 	}
 
 	/**
@@ -59,19 +60,8 @@ public class SnapshotableBoolean implements Snapshotable {
 	 * @param next
 	 */
 	@DelayedWrite
-	public void set(boolean next) {
+	public void set(T next) {
 		this.next.set(next);
-	}
-	
-	/**
-	 * Sets the next value but only if the current next value is the given value
-	 * 
-	 * @param expect
-	 * @param next
-	 * @return true on success
-	 */
-	public boolean compareAndSet(boolean expect, boolean next) {
-		return this.next.compareAndSet(expect, next);
 	}
 
 	/**
@@ -79,7 +69,7 @@ public class SnapshotableBoolean implements Snapshotable {
 	 * @return the stable snapshot value
 	 */
 	@SnapshotRead
-	public boolean get() {
+	public T get() {
 		return snapshot;
 	}
 
@@ -88,7 +78,7 @@ public class SnapshotableBoolean implements Snapshotable {
 	 * @return the unstable Live "next" value
 	 */
 	@LiveRead
-	public boolean getLive() {
+	public T getLive() {
 		return next.get();
 	}
 

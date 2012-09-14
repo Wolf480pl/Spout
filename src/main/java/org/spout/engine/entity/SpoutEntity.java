@@ -29,9 +29,6 @@ package org.spout.engine.entity;
 import java.util.Set;
 import java.util.UUID;
 import java.util.HashSet;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.spout.api.Source;
 import org.spout.api.component.BaseComponentHolder;
@@ -48,34 +45,33 @@ import org.spout.api.geo.cuboid.Region;
 import org.spout.api.geo.discrete.Point;
 import org.spout.api.geo.discrete.Transform;
 import org.spout.api.math.IntVector3;
-import org.spout.api.math.MathHelper;
-import org.spout.api.math.Matrix;
 import org.spout.api.math.Quaternion;
 import org.spout.api.math.Vector3;
-import org.spout.api.meta.SpoutMetaPlugin;
 import org.spout.api.util.OutwardIterator;
 import org.spout.api.util.thread.DelayedWrite;
 import org.spout.api.util.thread.SnapshotRead;
 import org.spout.engine.SpoutConfiguration;
+import org.spout.engine.util.thread.snapshotable.SnapshotManager;
 import org.spout.engine.util.thread.snapshotable.Snapshotable;
+import org.spout.engine.util.thread.snapshotable.SnapshotableBoolean;
+import org.spout.engine.util.thread.snapshotable.SnapshotableInt;
+import org.spout.engine.util.thread.snapshotable.SnapshotableObject;
 import org.spout.engine.world.SpoutChunk;
 import org.spout.engine.world.SpoutRegion;
 
 public class SpoutEntity extends BaseComponentHolder implements Entity, Snapshotable {
 	public static final int NOTSPAWNEDID = -1;
-	//Live
-	private final AtomicReference<EntityManager> entityManagerLive;
-	private final AtomicReference<Chunk> chunkLive;
-	private final AtomicBoolean observerLive = new AtomicBoolean(false);	
-	private final AtomicBoolean removeLive = new AtomicBoolean(false);
-	private final AtomicBoolean saveLive = new AtomicBoolean(true);	
-	private final AtomicInteger id = new AtomicInteger();
-	private final AtomicInteger viewDistanceLive = new AtomicInteger();
+
 	//Snapshot
-	private Chunk chunk;
-	private EntityManager entityManager;
-	private boolean observer = false;
-	private int viewDistance;
+	private final SnapshotManager snapshotManager = new SnapshotManager();
+	private SnapshotableObject<Chunk> chunk = new SnapshotableObject<Chunk>(snapshotManager);
+	private SnapshotableObject<EntityManager> entityManager = new SnapshotableObject<EntityManager>(snapshotManager);
+	private SnapshotableBoolean observer = new SnapshotableBoolean(snapshotManager, false);
+	private SnapshotableBoolean remove = new SnapshotableBoolean(snapshotManager, false);
+	private SnapshotableBoolean save = new SnapshotableBoolean(snapshotManager, false);
+	private SnapshotableInt id = new SnapshotableInt(snapshotManager, NOTSPAWNEDID);
+	private SnapshotableInt viewDistance = new SnapshotableInt(snapshotManager, 0);
+
 	//Other
 	private final Set<SpoutChunk> observingChunks = new HashSet<SpoutChunk>();
 	private final UUID uid;
@@ -91,9 +87,6 @@ public class SpoutEntity extends BaseComponentHolder implements Entity, Snapshot
 		} else {
 			this.uid = UUID.randomUUID();
 		}
-
-		chunkLive = new AtomicReference<Chunk>();
-		entityManagerLive = new AtomicReference<EntityManager>();
 
 		if (transform != null && load) {
 			setupInitialChunk(transform);
@@ -130,8 +123,8 @@ public class SpoutEntity extends BaseComponentHolder implements Entity, Snapshot
 		}
 		//If position is dirty, set chunk/manager live values
 		if (getTransform().isDirty()) {
-			chunkLive.set(getWorld().getChunkFromBlock(getTransform().getPosition(), LoadOption.NO_LOAD));
-			entityManagerLive.set(((SpoutRegion) getRegion()).getEntityManager());
+			chunk.set(getWorld().getChunkFromBlock(getTransform().getPosition(), LoadOption.NO_LOAD));
+			entityManager.set(((SpoutRegion) getRegion()).getEntityManager());
 		}
 	}
 
@@ -163,15 +156,15 @@ public class SpoutEntity extends BaseComponentHolder implements Entity, Snapshot
 
 	public void finalizeRun() {
 		//Move entity from Region A to Region B
-		if (entityManager != entityManagerLive.get()) {
-			entityManager.removeEntity(this);
+		if (entityManager.isDirty()) {
+			entityManager.get().removeEntity(this);
 			//Only allow non removed entities to move to new region
 			if (!isRemoved()) {
 				//Add entity to Region B
-				entityManagerLive.get().addEntity(this);
+				entityManager.getLive().addEntity(this);
 			}
 		}
-		boolean isLiveObserver = observerLive.get();
+
 		//Entity was removed so automatically remove observer/components
 		if (isRemoved()) {
 			removeObserver();
@@ -180,7 +173,7 @@ public class SpoutEntity extends BaseComponentHolder implements Entity, Snapshot
 				detach(component.getClass());
 			}			
 		//Entity changed chunks as observer OR observer status changed so update
-		} else if ((chunkLive.get() != chunk && isLiveObserver) || isLiveObserver != observer) {
+		} else if ((chunk.isDirty() && observer.getLive()) || observer.isDirty()) {
 			updateObserver();
 		}
 	}
@@ -197,9 +190,9 @@ public class SpoutEntity extends BaseComponentHolder implements Entity, Snapshot
 	protected void updateObserver() {
 		final int viewDistance = getViewDistance() >> Chunk.BLOCKS.BITS;
 		World w = getWorld();
-		int cx = chunkLive.get().getX();
-		int cy = chunkLive.get().getY();
-		int cz = chunkLive.get().getZ();
+		int cx = chunk.getLive().getX();
+		int cy = chunk.getLive().getY();
+		int cz = chunk.getLive().getZ();
 		HashSet<SpoutChunk> observing = new HashSet<SpoutChunk>((viewDistance * viewDistance * viewDistance * 3) / 2);
 		OutwardIterator oi = new OutwardIterator(cx, cy, cz, viewDistance);
 		while (oi.hasNext()) {
@@ -220,16 +213,16 @@ public class SpoutEntity extends BaseComponentHolder implements Entity, Snapshot
 
 	@Override
 	public Chunk getChunk() {
-		return chunk;
+		return chunk.get();
 	}
 
 	public Chunk getChunkLive() {
-		return chunkLive.get();
+		return chunk.getLive();
 	}
 
 	@Override
 	public Region getRegion() {
-		return entityManager.getRegion();
+		return entityManager.get().getRegion();
 	}
 
 	@Override
@@ -243,26 +236,26 @@ public class SpoutEntity extends BaseComponentHolder implements Entity, Snapshot
 
 	@Override
 	public void setViewDistance(int distance) {
-		viewDistanceLive.set(distance);
+		viewDistance.set(distance);
 	}
 
 	@Override
 	public int getViewDistance() {
-		return viewDistanceLive.get();
+		return viewDistance.getLive();
 	}
 
 	public int getPrevViewDistance() {
-		return viewDistance;
+		return viewDistance.get();
 	}
 
 	@Override
 	public void setObserver(boolean obs) {
-		observerLive.set(obs);
+		observer.set(obs);
 	}
 
 	@Override
 	public boolean isObserver() {
-		return observer;
+		return observer.get();
 	}
 
 	@Override
@@ -280,44 +273,43 @@ public class SpoutEntity extends BaseComponentHolder implements Entity, Snapshot
 	 */
 	public void setupInitialChunk(Transform transform) {
 		Chunk chunk = transform.getPosition().getWorld().getChunkFromBlock(transform.getPosition());
-		this.chunk = chunk;
-		chunkLive.set(chunk);
-		SpoutRegion region = (SpoutRegion) chunkLive.get().getRegion();
-		this.entityManager = region.getEntityManager();
-		entityManagerLive.set(region.getEntityManager());
+		this.chunk.set(chunk);
+		this.chunk.copySnapshot();
+		SpoutRegion region = (SpoutRegion) this.chunk.getLive().getRegion();
+		this.entityManager.set(region.getEntityManager());
+		this.entityManager.copySnapshot();
+		
 	}
 
 	@Override
 	public void copySnapshot() {
-		chunk = chunkLive.get();
-		entityManager = entityManagerLive.get();
+		snapshotManager.copyAllSnapshots();
 		getTransform().copySnapshot();
-		viewDistance = viewDistanceLive.get();
 		justSpawned = false;
 	}
 
 	@Override
 	@DelayedWrite
 	public void remove() {
-		removeLive.set(true);
+		remove.set(true);
 	}
 
 	@Override
 	@SnapshotRead
 	public boolean isRemoved() {
-		return removeLive.get();
+		return remove.get();
 	}
 
 	@Override
 	@DelayedWrite
 	public void setSavable(boolean savable) {
-		saveLive.set(savable);
+		save.set(savable);
 	}
 
 	@Override
 	@SnapshotRead
 	public boolean isSavable() {
-		return saveLive.get();
+		return save.get();
 	}
 
 	@Override
