@@ -26,6 +26,10 @@
  */
 package org.spout.engine.world;
 
+import javax.vecmath.Matrix3f;
+import javax.vecmath.Matrix4f;
+import javax.vecmath.Vector3f;
+
 import gnu.trove.iterator.TIntIterator;
 
 import java.io.File;
@@ -91,9 +95,25 @@ import org.spout.engine.util.TripleInt;
 import org.spout.engine.util.thread.AsyncExecutor;
 import org.spout.engine.util.thread.ThreadAsyncExecutor;
 import org.spout.engine.util.thread.snapshotable.SnapshotManager;
+import org.spout.engine.world.collision.SpoutPhysicsWorld;
 import org.spout.engine.world.dynamic.DynamicBlockUpdate;
 import org.spout.engine.world.dynamic.DynamicBlockUpdateTree;
 
+import com.bulletphysics.collision.broadphase.BroadphaseInterface;
+import com.bulletphysics.collision.broadphase.DbvtBroadphase;
+import com.bulletphysics.collision.dispatch.CollisionConfiguration;
+import com.bulletphysics.collision.dispatch.CollisionDispatcher;
+import com.bulletphysics.collision.dispatch.CollisionFlags;
+import com.bulletphysics.collision.dispatch.DefaultCollisionConfiguration;
+import com.bulletphysics.collision.dispatch.GhostPairCallback;
+import com.bulletphysics.collision.shapes.voxel.VoxelWorldShape;
+import com.bulletphysics.dynamics.DiscreteDynamicsWorld;
+import com.bulletphysics.dynamics.DynamicsWorld;
+import com.bulletphysics.dynamics.RigidBody;
+import com.bulletphysics.dynamics.RigidBodyConstructionInfo;
+import com.bulletphysics.dynamics.constraintsolver.SequentialImpulseConstraintSolver;
+import com.bulletphysics.linearmath.DefaultMotionState;
+import com.bulletphysics.linearmath.Transform;
 import com.google.common.collect.Sets;
 
 public class SpoutRegion extends Region {
@@ -170,6 +190,14 @@ public class SpoutRegion extends Region {
 	private final DynamicBlockUpdateTree dynamicBlockTree;
 	private List<DynamicBlockUpdate> multiRegionUpdates = null;
 
+	//Physics
+	private final DiscreteDynamicsWorld simulation;
+	private final CollisionDispatcher dispatcher;
+	private final BroadphaseInterface broadphase;
+	private final CollisionConfiguration configuration;
+	private final SequentialImpulseConstraintSolver solver;
+	private Vector3 gravity = Vector3.ZERO;
+
 	public SpoutRegion(SpoutWorld world, float x, float y, float z, RegionSource source) {
 		super(world, x * Region.BLOCKS.SIZE, y * Region.BLOCKS.SIZE, z * Region.BLOCKS.SIZE);
 		this.source = source;
@@ -219,6 +247,24 @@ public class SpoutRegion extends Region {
 		}
 		taskManager = new SpoutTaskManager(world.getEngine().getScheduler(), false, t, world.getAge());
 		scheduler = (SpoutScheduler) (Spout.getEngine().getScheduler());
+
+		//Physics
+		broadphase = new DbvtBroadphase();
+		broadphase.getOverlappingPairCache().setInternalGhostPairCallback(new GhostPairCallback());
+		configuration = new DefaultCollisionConfiguration();
+		dispatcher = new CollisionDispatcher(configuration);
+		solver = new SequentialImpulseConstraintSolver();
+		simulation = new DiscreteDynamicsWorld(dispatcher, broadphase, solver, configuration);
+		simulation.setGravity(MathHelper.toVector3f(gravity));
+		final SpoutPhysicsWorld physicsInfo = new SpoutPhysicsWorld(this);
+		final VoxelWorldShape simulationShape = new VoxelWorldShape(physicsInfo);
+		final Matrix3f rot = new Matrix3f();
+		rot.setIdentity();
+		final DefaultMotionState regionMotionState = new DefaultMotionState(new Transform(new Matrix4f(rot, new Vector3f(0, 0, 0), 1.0f)));
+		final RigidBodyConstructionInfo regionBodyInfo = new RigidBodyConstructionInfo(0, regionMotionState, simulationShape, new Vector3f());
+		final RigidBody regionBody = new RigidBody(regionBodyInfo);
+		regionBody.setCollisionFlags(CollisionFlags.STATIC_OBJECT | regionBody.getCollisionFlags());
+		simulation.addRigidBody(regionBody);
 	}
 
 	@Override
@@ -1242,6 +1288,18 @@ public class SpoutRegion extends Region {
 	@Override
 	public TaskManager getTaskManager() {
 		return taskManager;
+	}
+
+	@Override
+	public void setGravity(Vector3 gravity) {
+		simulation.setGravity(MathHelper.toVector3f(gravity));
+	}
+
+	@Override
+	public Vector3 getGravity() {
+		Vector3f vector = new Vector3f();
+		vector = simulation.getGravity(vector);
+		return MathHelper.toVector3(vector);
 	}
 
 	public void markObserverDirty(SpoutChunk chunk) {
