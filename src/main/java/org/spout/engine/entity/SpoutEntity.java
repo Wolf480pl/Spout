@@ -53,6 +53,7 @@ import org.spout.api.util.OutwardIterator;
 import org.spout.api.util.thread.DelayedWrite;
 import org.spout.api.util.thread.SnapshotRead;
 import org.spout.engine.SpoutConfiguration;
+import org.spout.engine.entity.component.SpoutPhysicsComponent;
 import org.spout.engine.util.thread.snapshotable.SnapshotManager;
 import org.spout.engine.util.thread.snapshotable.Snapshotable;
 import org.spout.engine.util.thread.snapshotable.SnapshotableBoolean;
@@ -342,5 +343,13 @@ public class SpoutEntity extends BaseComponentHolder implements Entity, Snapshot
 				((EntityComponent)component).onInteract(action, source);
 			}
 		}
+	}
+
+	@Override
+	public <T extends Component> T add(Class<T> type) {
+		if (type == PhysicsComponent.class) {
+			return (T) super.add(SpoutPhysicsComponent.class);
+		}
+		return super.add(type);
 	}
 }
