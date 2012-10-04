@@ -196,7 +196,6 @@ public class SpoutRegion extends Region {
 	private final BroadphaseInterface broadphase;
 	private final CollisionConfiguration configuration;
 	private final SequentialImpulseConstraintSolver solver;
-	private Vector3 gravity = Vector3.ZERO;
 
 	public SpoutRegion(SpoutWorld world, float x, float y, float z, RegionSource source) {
 		super(world, x * Region.BLOCKS.SIZE, y * Region.BLOCKS.SIZE, z * Region.BLOCKS.SIZE);
@@ -255,7 +254,7 @@ public class SpoutRegion extends Region {
 		dispatcher = new CollisionDispatcher(configuration);
 		solver = new SequentialImpulseConstraintSolver();
 		simulation = new DiscreteDynamicsWorld(dispatcher, broadphase, solver, configuration);
-		simulation.setGravity(MathHelper.toVector3f(gravity));
+		simulation.setGravity(MathHelper.toVector3f(new Vector3(0, -9.81, 0)));
 		final SpoutPhysicsWorld physicsInfo = new SpoutPhysicsWorld(this);
 		final VoxelWorldShape simulationShape = new VoxelWorldShape(physicsInfo);
 		final Matrix3f rot = new Matrix3f();
@@ -768,12 +767,18 @@ public class SpoutRegion extends Region {
 				break;
 			}
 			case 1: {
+				updateDynamics(delta / 1000F);
 				break;
 			}
 			default: {
 				throw new IllegalStateException("Number of states exceeded limit for SpoutRegion");
 			}
 		}
+	}
+
+	private void updateDynamics(float dt) {
+		simulation.stepSimulation(dt, 1, 60);
+		//TODO Find the collision contact responses, call onCollide in components
 	}
 
 	public void haltRun() {
