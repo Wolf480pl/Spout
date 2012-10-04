@@ -783,6 +783,9 @@ public class SpoutRegion extends Region {
 		for (Entity entity : getAll()) {
 			if (entity.has(PhysicsComponent.class)) {
 				PhysicsComponent physics = entity.add(PhysicsComponent.class);
+				if (physics.getCollisionObjectLive().getCollisionShape() == null) {
+					continue;
+				}
 				if (physics.isCollisionObjectDirty()) {
 					CollisionObject object = physics.getCollisionObjectLive();
 					if (simulation.getCollisionObjectArray().contains(physics.getCollisionObject())) {
@@ -801,7 +804,9 @@ public class SpoutRegion extends Region {
 				}
 			}
 		}
-		simulation.stepSimulation(dt, 1, 60);
+		if (simulation.getNumCollisionObjects() > 0) {
+			simulation.stepSimulation(dt, 5, 30);
+		}
 		//TODO Find the collision contact responses, call onCollide in components
 	}
 

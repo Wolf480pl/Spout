@@ -204,7 +204,7 @@ public class ChunkMesh extends BaseMesh {
 	}
 
 	private Color getColor(BlockMaterial m) {
-		if (!m.isSolid()) {
+		if (m.isPenetrable()) {
 			return new Color(0, 0, 0);
 		}
 		switch (m.getId()) {
