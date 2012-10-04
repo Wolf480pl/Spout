@@ -53,6 +53,7 @@ import java.util.logging.Level;
 import org.spout.api.Source;
 import org.spout.api.Spout;
 import org.spout.api.component.components.BlockComponent;
+import org.spout.api.component.components.PhysicsComponent;
 import org.spout.api.datatable.ManagedHashMap;
 import org.spout.api.entity.Entity;
 import org.spout.api.entity.Player;
@@ -104,6 +105,7 @@ import com.bulletphysics.collision.broadphase.DbvtBroadphase;
 import com.bulletphysics.collision.dispatch.CollisionConfiguration;
 import com.bulletphysics.collision.dispatch.CollisionDispatcher;
 import com.bulletphysics.collision.dispatch.CollisionFlags;
+import com.bulletphysics.collision.dispatch.CollisionObject;
 import com.bulletphysics.collision.dispatch.DefaultCollisionConfiguration;
 import com.bulletphysics.collision.dispatch.GhostPairCallback;
 import com.bulletphysics.collision.shapes.voxel.VoxelWorldShape;
@@ -112,6 +114,7 @@ import com.bulletphysics.dynamics.DynamicsWorld;
 import com.bulletphysics.dynamics.RigidBody;
 import com.bulletphysics.dynamics.RigidBodyConstructionInfo;
 import com.bulletphysics.dynamics.constraintsolver.SequentialImpulseConstraintSolver;
+import com.bulletphysics.dynamics.vehicle.RaycastVehicle;
 import com.bulletphysics.linearmath.DefaultMotionState;
 import com.bulletphysics.linearmath.Transform;
 import com.google.common.collect.Sets;
@@ -777,6 +780,27 @@ public class SpoutRegion extends Region {
 	}
 
 	private void updateDynamics(float dt) {
+		for (Entity entity : getAll()) {
+			if (entity.has(PhysicsComponent.class)) {
+				PhysicsComponent physics = entity.add(PhysicsComponent.class);
+				if (physics.isCollisionObjectDirty()) {
+					CollisionObject object = physics.getCollisionObjectLive();
+					if (simulation.getCollisionObjectArray().contains(physics.getCollisionObject())) {
+						if (object instanceof RigidBody) {
+							simulation.removeRigidBody((RigidBody) object);
+						} else {
+							simulation.removeCollisionObject(object);
+						}
+					} else {
+						if (object instanceof RigidBody) {
+							simulation.addRigidBody((RigidBody) object);
+						} else {
+							simulation.addCollisionObject(object);
+						}
+					}
+				}
+			}
+		}
 		simulation.stepSimulation(dt, 1, 60);
 		//TODO Find the collision contact responses, call onCollide in components
 	}
@@ -1379,5 +1403,9 @@ public class SpoutRegion extends Region {
 		SpoutChunk newChunk = new FilteredChunk(getWorld(), this, getBlockX() | x, getBlockY() | y, getBlockZ() | z, SpoutChunk.PopulationState.POPULATED, blockIds, blockData, skyLight, blockLight, new ManagedHashMap());
 		chunks[x >> Region.CHUNKS.BITS][y >> Region.CHUNKS.BITS][z >> Region.CHUNKS.BITS].set(newChunk);
 		((SpoutClient) getWorld().getEngine()).getWorldRenderer().updateChunk(getChunkX() | x, getChunkY() | y, getChunkZ() | z);
+	}
+
+	public DynamicsWorld getDynamics() {
+		return simulation;
 	}
 }

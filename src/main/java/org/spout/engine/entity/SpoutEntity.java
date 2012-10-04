@@ -36,6 +36,7 @@ import org.spout.api.component.BaseComponentHolder;
 import org.spout.api.component.Component;
 import org.spout.api.component.components.EntityComponent;
 import org.spout.api.component.components.NetworkComponent;
+import org.spout.api.component.components.PhysicsComponent;
 import org.spout.api.component.components.TransformComponent;
 import org.spout.api.entity.Entity;
 import org.spout.api.event.player.PlayerInteractEvent.Action;
@@ -296,6 +297,9 @@ public class SpoutEntity extends BaseComponentHolder implements Entity, Snapshot
 	public void copySnapshot() {
 		snapshotManager.copyAllSnapshots();
 		getTransform().copySnapshot();
+		if (has(PhysicsComponent.class)) {
+			add(PhysicsComponent.class).copySnapshot();
+		}
 		justSpawned = false;
 	}
 
