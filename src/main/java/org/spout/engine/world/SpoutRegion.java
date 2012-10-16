@@ -696,10 +696,14 @@ public class SpoutRegion extends Region {
 		boolean visible = isVisibleToPlayers();
 		for (SpoutEntity ent : entityManager.getAll()) {
 			try {
-				//Try and determine if we should tick this entity
-				//If the entity is not important (not an observer)
-				//And the entity is not visible to players, don't tick it
-				if (visible) { //TODO: Replace isImportant
+				/*
+				 * Only tick entities if...
+				 * - The entity is within the sync distance of an observer. TODO The isVisibleToPlayers is wrong, correct it.
+				 * - The entity has a non-null chunk
+				 * - The entity is in a POPULATED chunk (not just a loaded one).
+				 */
+				final Chunk chunk = ent.getChunkLive();
+				if (visible && chunk != null && chunk.isPopulated()) {
 					ent.tick(dt);
 				}
 			} catch (Exception e) {
