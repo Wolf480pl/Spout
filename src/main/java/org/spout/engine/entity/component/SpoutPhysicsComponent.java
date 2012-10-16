@@ -58,7 +58,7 @@ public class SpoutPhysicsComponent extends PhysicsComponent {
 
 	@Override
 	public void onAttached() {
-		state = new SpoutDefaultMotionState(getHolder());
+		state = new SpoutDefaultMotionState(getOwner());
 	}
 
 	@Override

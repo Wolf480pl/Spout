@@ -335,8 +335,9 @@ public class SpoutEntity extends BaseComponentHolder implements Entity, Snapshot
 	public void copySnapshot() {
 		snapshotManager.copyAllSnapshots();
 		getTransform().copySnapshot();
-		if (has(PhysicsComponent.class)) {
-			add(PhysicsComponent.class).copySnapshot();
+		PhysicsComponent physics = get(PhysicsComponent.class);
+		if (physics != null) {
+			((SpoutPhysicsComponent) physics).copySnapshot();
 		}
 		justSpawned = false;
 	}

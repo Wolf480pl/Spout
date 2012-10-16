@@ -96,10 +96,6 @@ import org.spout.engine.util.thread.ThreadAsyncExecutor;
 import org.spout.engine.util.thread.snapshotable.SnapshotManager;
 import org.spout.engine.util.thread.snapshotable.SnapshotableLong;
 
-<<<<<<<HEAD
-		=======
-		>>>>>>>master
-
 public class SpoutWorld extends AsyncManager implements World {
 	private SnapshotManager snapshotManager = new SnapshotManager();
 	/**
