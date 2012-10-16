@@ -35,7 +35,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -44,13 +43,6 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 import org.spout.api.Source;
 import org.spout.api.Spout;
-<<<<<<< HEAD
-import org.spout.api.component.BaseComponentHolder;
-=======
-import org.spout.api.collision.BoundingBox;
-import org.spout.api.collision.CollisionModel;
-import org.spout.api.collision.CollisionVolume;
->>>>>>> master
 import org.spout.api.component.Component;
 import org.spout.api.component.ComponentHolder;
 import org.spout.api.component.WorldComponentHolder;
@@ -87,10 +79,10 @@ import org.spout.api.util.hashing.NibblePairHashed;
 import org.spout.api.util.list.concurrent.ConcurrentList;
 import org.spout.api.util.map.concurrent.TSyncIntPairObjectHashMap;
 import org.spout.api.util.map.concurrent.TSyncLongObjectHashMap;
-
 import org.spout.api.util.sanitation.StringSanitizer;
 import org.spout.api.util.thread.LiveRead;
 import org.spout.api.util.thread.Threadsafe;
+
 import org.spout.engine.SpoutEngine;
 import org.spout.engine.entity.SpoutEntity;
 import org.spout.engine.filesystem.SharedFileSystem;
@@ -103,6 +95,10 @@ import org.spout.engine.util.thread.AsyncManager;
 import org.spout.engine.util.thread.ThreadAsyncExecutor;
 import org.spout.engine.util.thread.snapshotable.SnapshotManager;
 import org.spout.engine.util.thread.snapshotable.SnapshotableLong;
+
+<<<<<<<HEAD
+		=======
+		>>>>>>>master
 
 public class SpoutWorld extends AsyncManager implements World {
 	private SnapshotManager snapshotManager = new SnapshotManager();
@@ -176,18 +172,16 @@ public class SpoutWorld extends AsyncManager implements World {
 	 * Hashcode cache
 	 */
 	private final int hashcode;
-	
 	/*
-	 * A WeakReference to this world
-	 */
+		 * A WeakReference to this world
+		 */
 	private final WeakReference<World> selfReference;
 	public static final WeakReference<World> NULL_WEAK_REFERENCE = new WeakReference<World>(null);
-	
 	/*
-	 * Components
-	 */
+		 * Components
+		 */
 	private final WorldComponentHolder componentHolder;
-	
+
 	// TODO set up number of stages ?
 	public SpoutWorld(String name, SpoutEngine engine, long seed, long age, WorldGenerator generator, UUID uid, StringMap itemMap) {
 		super(1, new ThreadAsyncExecutor(toString(name, uid, age)), engine);
@@ -208,7 +202,7 @@ public class SpoutWorld extends AsyncManager implements World {
 		worldDirectory.mkdirs();
 
 		heightMapBAAs = new TSyncIntPairObjectHashMap<BAAWrapper>();
-		
+
 		this.hashcode = new HashCodeBuilder(27, 971).append(uid).toHashCode();
 
 		this.lightingManager = new SpoutWorldLighting(this);
@@ -286,7 +280,7 @@ public class SpoutWorld extends AsyncManager implements World {
 		final SpoutColumn column = getColumn(x, z, true);
 		final BiomeManager manager = column.getBiomeManager();
 		if (manager != null) {
-			final Biome biome = column.getBiomeManager().getBiome(x & SpoutColumn.BLOCKS.MASK, y & SpoutColumn.BLOCKS.MASK, z  & SpoutColumn.BLOCKS.MASK);
+			final Biome biome = column.getBiomeManager().getBiome(x & SpoutColumn.BLOCKS.MASK, y & SpoutColumn.BLOCKS.MASK, z & SpoutColumn.BLOCKS.MASK);
 			if (biome != null) {
 				return biome;
 			}
@@ -477,7 +471,6 @@ public class SpoutWorld extends AsyncManager implements World {
 	public DynamicUpdateEntry queueDynamicUpdate(int x, int y, int z) {
 		return this.getRegionFromBlock(x, y, z).queueDynamicUpdate(x, y, z);
 	}
-
 
 	public StringMap getItemMap() {
 		return itemMap;
@@ -1132,7 +1125,7 @@ public class SpoutWorld extends AsyncManager implements World {
 	@Override
 	public void runPhysics(int sequence) throws InterruptedException {
 	}
-	
+
 	@Override
 	public void runLighting(int sequence) throws InterruptedException {
 	}

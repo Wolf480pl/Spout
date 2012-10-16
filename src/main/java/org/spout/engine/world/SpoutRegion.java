@@ -29,9 +29,6 @@ package org.spout.engine.world;
 import javax.vecmath.Matrix3f;
 import javax.vecmath.Matrix4f;
 import javax.vecmath.Vector3f;
-
-import gnu.trove.iterator.TIntIterator;
-
 import java.io.File;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -49,6 +46,25 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
+
+import com.bulletphysics.collision.broadphase.BroadphaseInterface;
+import com.bulletphysics.collision.broadphase.DbvtBroadphase;
+import com.bulletphysics.collision.dispatch.CollisionConfiguration;
+import com.bulletphysics.collision.dispatch.CollisionDispatcher;
+import com.bulletphysics.collision.dispatch.CollisionFlags;
+import com.bulletphysics.collision.dispatch.CollisionObject;
+import com.bulletphysics.collision.dispatch.DefaultCollisionConfiguration;
+import com.bulletphysics.collision.dispatch.GhostPairCallback;
+import com.bulletphysics.collision.shapes.voxel.VoxelWorldShape;
+import com.bulletphysics.dynamics.DiscreteDynamicsWorld;
+import com.bulletphysics.dynamics.DynamicsWorld;
+import com.bulletphysics.dynamics.RigidBody;
+import com.bulletphysics.dynamics.RigidBodyConstructionInfo;
+import com.bulletphysics.dynamics.constraintsolver.SequentialImpulseConstraintSolver;
+import com.bulletphysics.linearmath.DefaultMotionState;
+import com.bulletphysics.linearmath.Transform;
+
+import gnu.trove.iterator.TIntIterator;
 
 import org.spout.api.Source;
 import org.spout.api.Spout;
@@ -83,6 +99,7 @@ import org.spout.api.util.cuboid.CuboidShortBuffer;
 import org.spout.api.util.set.TByteTripleHashSet;
 import org.spout.api.util.thread.DelayedWrite;
 import org.spout.api.util.thread.LiveRead;
+
 import org.spout.engine.SpoutClient;
 import org.spout.engine.SpoutConfiguration;
 import org.spout.engine.entity.EntityManager;
@@ -99,25 +116,6 @@ import org.spout.engine.util.thread.snapshotable.SnapshotManager;
 import org.spout.engine.world.collision.SpoutPhysicsWorld;
 import org.spout.engine.world.dynamic.DynamicBlockUpdate;
 import org.spout.engine.world.dynamic.DynamicBlockUpdateTree;
-
-import com.bulletphysics.collision.broadphase.BroadphaseInterface;
-import com.bulletphysics.collision.broadphase.DbvtBroadphase;
-import com.bulletphysics.collision.dispatch.CollisionConfiguration;
-import com.bulletphysics.collision.dispatch.CollisionDispatcher;
-import com.bulletphysics.collision.dispatch.CollisionFlags;
-import com.bulletphysics.collision.dispatch.CollisionObject;
-import com.bulletphysics.collision.dispatch.DefaultCollisionConfiguration;
-import com.bulletphysics.collision.dispatch.GhostPairCallback;
-import com.bulletphysics.collision.shapes.voxel.VoxelWorldShape;
-import com.bulletphysics.dynamics.DiscreteDynamicsWorld;
-import com.bulletphysics.dynamics.DynamicsWorld;
-import com.bulletphysics.dynamics.RigidBody;
-import com.bulletphysics.dynamics.RigidBodyConstructionInfo;
-import com.bulletphysics.dynamics.constraintsolver.SequentialImpulseConstraintSolver;
-import com.bulletphysics.dynamics.vehicle.RaycastVehicle;
-import com.bulletphysics.linearmath.DefaultMotionState;
-import com.bulletphysics.linearmath.Transform;
-import com.google.common.collect.Sets;
 
 public class SpoutRegion extends Region {
 	private AtomicInteger numberActiveChunks = new AtomicInteger();
@@ -192,7 +190,6 @@ public class SpoutRegion extends Region {
 	private final ArrayBlockingQueue<SpoutChunk> dirtyChunks = new ArrayBlockingQueue<SpoutChunk>(CHUNKS.VOLUME);
 	private final DynamicBlockUpdateTree dynamicBlockTree;
 	private List<DynamicBlockUpdate> multiRegionUpdates = null;
-
 	//Physics
 	private final DiscreteDynamicsWorld simulation;
 	private final CollisionDispatcher dispatcher;
@@ -203,12 +200,12 @@ public class SpoutRegion extends Region {
 	public SpoutRegion(SpoutWorld world, float x, float y, float z, RegionSource source) {
 		super(world, x * Region.BLOCKS.SIZE, y * Region.BLOCKS.SIZE, z * Region.BLOCKS.SIZE);
 		this.source = source;
-		
+
 		int xx = MathHelper.mod(getX(), 3);
 		int yy = MathHelper.mod(getY(), 3);
 		int zz = MathHelper.mod(getZ(), 3);
 		updateSequence = (xx * 9) + (yy * 3) + zz;
-		
+
 		manager = new SpoutRegionManager(this, 2, new ThreadAsyncExecutor(this.toString() + " Thread", updateSequence), world.getEngine());
 
 		AsyncExecutor ae = manager.getExecutor();
@@ -227,12 +224,11 @@ public class SpoutRegion extends Region {
 				}
 			}
 		}
-		
+
 		for (int dx = 0; dx < CHUNKS.SIZE; dx++) {
 			for (int dz = 0; dz < CHUNKS.SIZE; dz++) {
 				generatedColumns[dx][dz] = new AtomicBoolean(false);
 			}
-
 		}
 
 		File worldDirectory = world.getDirectory();
@@ -344,7 +340,7 @@ public class SpoutRegion extends Region {
 		if (generated.get()) {
 			return;
 		}
-		synchronized(generated) {
+		synchronized (generated) {
 			if (generated.get()) {
 				return;
 			}
@@ -365,9 +361,8 @@ public class SpoutRegion extends Region {
 			}
 			generated.set(true);
 		}
-		
 	}
-	
+
 	private SpoutChunk setChunk(SpoutChunk newChunk, int x, int y, int z, ChunkDataForRegion dataForRegion, boolean generated, LoadOption loadopt) {
 		final AtomicReference<SpoutChunk> chunkReference = chunks[x][y][z];
 		while (true) {
@@ -394,7 +389,7 @@ public class SpoutRegion extends Region {
 			}
 		}
 	}
-	
+
 	private void checkChunkLoaded(SpoutChunk chunk, LoadOption loadopt) {
 		if (loadopt.loadIfNeeded()) {
 			if (!chunk.cancelUnload()) {
@@ -432,7 +427,7 @@ public class SpoutRegion extends Region {
 			int cx = c.getX() & CHUNKS.MASK;
 			int cy = c.getY() & CHUNKS.MASK;
 			int cz = c.getZ() & CHUNKS.MASK;
-			
+
 			Iterator<Map.Entry<SpoutPlayer, TByteTripleHashSet>> itr = observers.entrySet().iterator();
 			while (itr.hasNext()) {
 				Map.Entry<SpoutPlayer, TByteTripleHashSet> entry = itr.next();
@@ -580,7 +575,7 @@ public class SpoutRegion extends Region {
 
 			empty |= processChunkSaveUnload(chunkCoords.x, chunkCoords.y, chunkCoords.z);
 		}
-		
+
 		SpoutChunk c;
 		TByteTripleHashSet done = new TByteTripleHashSet();
 		while ((c = observedChunkQueue.poll()) != null) {
@@ -592,13 +587,13 @@ public class SpoutRegion extends Region {
 			}
 			c = chunks[cx][cy][cz].get();
 			Set<SpoutEntity> chunkObservers = c == null ? Collections.<SpoutEntity>emptySet() : c.getObservers();
-			
+
 			Iterator<Map.Entry<SpoutPlayer, TByteTripleHashSet>> itr = observers.entrySet().iterator();
 			while (itr.hasNext()) {
 				Map.Entry<SpoutPlayer, TByteTripleHashSet> entry = itr.next();
 				TByteTripleHashSet chunkSet = entry.getValue();
 				SpoutPlayer sp = entry.getKey();
-				
+
 				if (chunkObservers.contains(sp)) {
 					chunkSet.add(cx, cy, cz);
 				} else {
@@ -942,7 +937,7 @@ public class SpoutRegion extends Region {
 		while ((snapshotFuture = snapshotQueue.poll()) != null) {
 			snapshotFuture.run();
 		}
-		
+
 		for (int dx = 0; dx < CHUNKS.SIZE; dx++) {
 			for (int dy = 0; dy < CHUNKS.SIZE; dy++) {
 				for (int dz = 0; dz < CHUNKS.SIZE; dz++) {
@@ -955,7 +950,6 @@ public class SpoutRegion extends Region {
 		}
 
 		entityManager.syncEntities();
-
 	}
 
 	public void queueDirty(SpoutChunk chunk) {
@@ -1027,9 +1021,9 @@ public class SpoutRegion extends Region {
 			}
 		}
 	}
-	
+
 	int lightingUpdates = 0;
-	
+
 	public void runLighting(int sequence) throws InterruptedException {
 		if (sequence == -1) {
 			runLocalLighting();
