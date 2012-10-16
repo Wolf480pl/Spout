@@ -44,7 +44,13 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 import org.spout.api.Source;
 import org.spout.api.Spout;
+<<<<<<< HEAD
 import org.spout.api.component.BaseComponentHolder;
+=======
+import org.spout.api.collision.BoundingBox;
+import org.spout.api.collision.CollisionModel;
+import org.spout.api.collision.CollisionVolume;
+>>>>>>> master
 import org.spout.api.component.Component;
 import org.spout.api.component.ComponentHolder;
 import org.spout.api.component.WorldComponentHolder;
@@ -1079,11 +1085,6 @@ public class SpoutWorld extends AsyncManager implements World {
 	@Override
 	public boolean setBlockSkyLight(int x, int y, int z, byte light, Source source) {
 		return this.getChunkFromBlock(x, y, z).setBlockSkyLight(x, y, z, light, source);
-	}
-
-	@Override
-	public void setBlockComponent(int x, int y, int z, BlockComponent component) {
-		getRegionFromBlock(x, y, z).setBlockComponent(x, y, z, component);
 	}
 
 	@Override

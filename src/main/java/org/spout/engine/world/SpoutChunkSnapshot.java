@@ -26,6 +26,8 @@
  */
 package org.spout.engine.world;
 
+import gnu.trove.procedure.TShortObjectProcedure;
+
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -35,6 +37,8 @@ import org.spout.api.component.components.BlockComponent;
 import org.spout.api.datatable.SerializableMap;
 import org.spout.api.entity.Entity;
 import org.spout.api.entity.EntitySnapshot;
+import org.spout.api.entity.Player;
+import org.spout.api.entity.PlayerSnapshot;
 import org.spout.api.generator.biome.Biome;
 import org.spout.api.generator.biome.BiomeManager;
 import org.spout.api.geo.cuboid.Chunk;
@@ -43,6 +47,8 @@ import org.spout.api.geo.cuboid.Region;
 import org.spout.api.material.BlockMaterial;
 import org.spout.api.material.block.BlockFullState;
 import org.spout.api.util.hashing.NibblePairHashed;
+import org.spout.api.util.hashing.NibbleQuadHashed;
+import org.spout.api.util.thread.SnapshotRead;
 
 import org.spout.engine.world.SpoutChunk.PopulationState;
 
@@ -53,6 +59,7 @@ public class SpoutChunkSnapshot extends ChunkSnapshot {
 	private final WeakReference<Region> parentRegion;
 	private final byte worldSkyLightLoss;
 	private final List<EntitySnapshot> entities;
+	private final List<BlockComponentSnapshot> blockComponents;
 	private final short[] blockIds;
 	private final short[] blockData;
 	private final byte[] blockLight;
@@ -67,15 +74,28 @@ public class SpoutChunkSnapshot extends ChunkSnapshot {
 		parentRegion = new WeakReference<Region>(chunk.getRegion());
 
 		// Cache entities
-		if (type == EntityType.ENTITIES) {
-			ArrayList<EntitySnapshot> entities = new ArrayList<EntitySnapshot>();
-			for (Entity e : chunk.getLiveEntities()) {
-				entities.add(new EntitySnapshot(e));
+		if (type == EntityType.BOTH) {
+			this.entities = Collections.unmodifiableList(getEntities(chunk));
+			BlockSnapshotProcedure procedure = new BlockSnapshotProcedure(chunk);
+			synchronized(chunk.getBlockComponents()) {
+				chunk.getBlockComponents().forEachEntry(procedure);
 			}
-			this.entities = Collections.unmodifiableList(entities);
+			this.blockComponents = Collections.unmodifiableList(procedure.snapshots);
+		} else if (type == EntityType.ENTITIES) {
+			this.entities = Collections.unmodifiableList(getEntities(chunk));
+			this.blockComponents = null;
+		} else if (type == EntityType.BLOCK_COMPONENTS) {
+			this.entities = null;
+			BlockSnapshotProcedure procedure = new BlockSnapshotProcedure(chunk);
+			synchronized(chunk.getBlockComponents()) {
+				chunk.getBlockComponents().forEachEntry(procedure);
+			}
+			this.blockComponents = Collections.unmodifiableList(procedure.snapshots);
 		} else {
 			this.entities = null;
+			this.blockComponents = null;
 		}
+
 		this.worldSkyLightLoss = (byte) (15 - chunk.getWorld().getSkyLight());
 
 		// Cache blocks
@@ -100,6 +120,18 @@ public class SpoutChunkSnapshot extends ChunkSnapshot {
 		}
 		this.populationState = chunk.getPopulationState();
 		renderDirty = chunk.isDirty();
+	}
+
+	private static List<EntitySnapshot> getEntities(SpoutChunk chunk) {
+		ArrayList<EntitySnapshot> entities = new ArrayList<EntitySnapshot>();
+		for (Entity e : chunk.getLiveEntities()) {
+			if (e instanceof Player) {
+				entities.add(new PlayerSnapshot((Player) e));
+			} else {
+				entities.add(new EntitySnapshot(e));
+			}
+		}
+		return entities;
 	}
 
 	private int getBlockIndex(int x, int y, int z) {
@@ -213,11 +245,6 @@ public class SpoutChunkSnapshot extends ChunkSnapshot {
 	}
 
 	@Override
-	public BlockComponent getBlockComponent(int x, int y, int z) {
-		return null;
-	}
-
-	@Override
 	public Biome getBiome(int x, int y, int z) {
 		return biomes.getBiome(x, y, z);
 	}
@@ -239,5 +266,71 @@ public class SpoutChunkSnapshot extends ChunkSnapshot {
 	@Override
 	public BiomeManager getBiomeManager() {
 		return biomes;
+	}
+
+	@Override
+	public List<BlockComponentSnapshot> getBlockComponents() {
+		return blockComponents;
+	}
+
+	@Override
+	@SnapshotRead
+	public BlockComponent getBlockComponent(int x, int y, int z) {
+		throw new UnsupportedOperationException("Use getBlockComponents instead");
+	}
+
+	private static class SpoutBlockComponentSnapshot implements BlockComponentSnapshot {
+		private final int x, y, z;
+		private final Class<? extends BlockComponent> clazz;
+		private final SerializableMap data;
+		private SpoutBlockComponentSnapshot(int x, int y, int z, Class<? extends BlockComponent> clazz, SerializableMap data) {
+			this.x = x;
+			this.y = y;
+			this.z = z;
+			this.clazz = clazz;
+			this.data = data;
+		}
+
+		@Override
+		public int getX() {
+			return x;
+		}
+
+		@Override
+		public int getY() {
+			return y;
+		}
+
+		@Override
+		public int getZ() {
+			return z;
+		}
+
+		@Override
+		public Class<? extends BlockComponent> getComponent() {
+			return clazz;
+		}
+
+		@Override
+		public SerializableMap getData() {
+			return data;
+		}
+	}
+
+	private static class BlockSnapshotProcedure implements TShortObjectProcedure<BlockComponent> {
+		private final SpoutChunk chunk;
+		private final ArrayList<BlockComponentSnapshot> snapshots = new ArrayList<BlockComponentSnapshot>();
+		private BlockSnapshotProcedure(SpoutChunk chunk) {
+			this.chunk = chunk;
+		}
+
+		@Override
+		public boolean execute(short index, BlockComponent component) {
+			int x = NibbleQuadHashed.key1(index) + chunk.getBlockX();
+			int y = NibbleQuadHashed.key2(index) + chunk.getBlockY();
+			int z = NibbleQuadHashed.key3(index) + chunk.getBlockZ();
+			snapshots.add(new SpoutBlockComponentSnapshot(x, y, z, component.getClass(), component.getOwner().getData()));
+			return true;
+		}
 	}
 }

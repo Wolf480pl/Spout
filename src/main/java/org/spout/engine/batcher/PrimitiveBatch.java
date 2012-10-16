@@ -40,7 +40,7 @@ import org.spout.engine.mesh.BaseMesh;
 import org.spout.engine.renderer.BatchVertexRenderer;
 
 public class PrimitiveBatch {
-	Renderer renderer;
+	private final Renderer renderer;
 	private final Vector3[] cubeCorners = new Vector3[]{Vector3.ZERO, Vector3.UNIT_Y, new Vector3(0, 1, 1), Vector3.UNIT_Z,
 			Vector3.UNIT_X, new Vector3(1, 1, 0), Vector3.ONE, new Vector3(1, 0, 1)};
 
@@ -60,47 +60,65 @@ public class PrimitiveBatch {
 		if (sides.length != 6) {
 			throw new IllegalStateException("Must have 6 sides!");
 		}
+		
+		Vector3 p0 = cubeCorners[0].multiply(scale).add(location);
+		Vector3 p1 = cubeCorners[1].multiply(scale).add(location);
+		Vector3 p2 = cubeCorners[2].multiply(scale).add(location);
+		Vector3 p3 = cubeCorners[3].multiply(scale).add(location);
+		Vector3 p4 = cubeCorners[4].multiply(scale).add(location);
+		Vector3 p5 = cubeCorners[5].multiply(scale).add(location);
+		Vector3 p6 = cubeCorners[6].multiply(scale).add(location);
+		Vector3 p7 = cubeCorners[7].multiply(scale).add(location);
+		
+		/*   1--2
+		 *  /| /|
+		 * 5--6 |
+		 * | 0|-3
+		 * |/ |/
+		 * 4--7
+		 */
+		
 		if (sides[0]) {
-			addQuad(cubeCorners[0].multiply(scale).add(location), cubeCorners[1].multiply(scale).add(location), cubeCorners[2].multiply(scale).add(location), cubeCorners[3].multiply(scale).add(location), c);
+			addQuad(p0, p1, p2, p3, c);
 		}
 		if (sides[1]) {
-			addQuad(cubeCorners[7].multiply(scale).add(location), cubeCorners[6].multiply(scale).add(location), cubeCorners[5].multiply(scale).add(location), cubeCorners[4].multiply(scale).add(location), c);
+			addQuad(p7, p6, p5, p4, c);
 		}
 		if (sides[2]) {
-			addQuad(cubeCorners[3].multiply(scale).add(location), cubeCorners[2].multiply(scale).add(location), cubeCorners[6].multiply(scale).add(location), cubeCorners[7].multiply(scale).add(location), c);
+			addQuad(p3, p2, p6, p7, c);
 		}
 
 		if (sides[3]) {
-			addQuad(cubeCorners[4].multiply(scale).add(location), cubeCorners[5].multiply(scale).add(location), cubeCorners[1].multiply(scale).add(location), cubeCorners[0].multiply(scale).add(location), c);
+			addQuad(p4, p5, p1, p0, c);
 		}
 		if (sides[4]) {
-			addQuad(cubeCorners[1].multiply(scale).add(location), cubeCorners[5].multiply(scale).add(location), cubeCorners[6].multiply(scale).add(location), cubeCorners[2].multiply(scale).add(location), c);
+			addQuad(p1, p5, p6, p2, c);
 		}
 		if (sides[5]) {
-			addQuad(cubeCorners[4].multiply(scale).add(location), cubeCorners[0].multiply(scale).add(location), cubeCorners[3].multiply(scale).add(location), cubeCorners[7].multiply(scale).add(location), c);
+			addQuad(p4, p0, p3, p7, c);
 		}
 	}
 
 	public void addQuad(Vector3 a, Vector3 b, Vector3 c, Vector3 d, Color col) {
-		renderer.addTexCoord(0, 0);
+		renderer.addTexCoord(0f, 0f);
 		renderer.addColor(col);
 		renderer.addVertex(a);
-		renderer.addTexCoord(1, 0);
+		renderer.addTexCoord(1f, 0f);
 		renderer.addColor(col);
 		renderer.addVertex(b);
-		renderer.addTexCoord(1, 1);
+		renderer.addTexCoord(1f, 1f);
 		renderer.addColor(col);
 		renderer.addVertex(c);
 
-		renderer.addTexCoord(1, 1);
+		renderer.addTexCoord(1f, 1f);
 		renderer.addColor(col);
 		renderer.addVertex(c);
-		renderer.addTexCoord(0, 0);
-		renderer.addColor(col);
-		renderer.addVertex(a);
-		renderer.addTexCoord(0, 1);
+		renderer.addTexCoord(0f, 1f);
 		renderer.addColor(col);
 		renderer.addVertex(d);
+		renderer.addTexCoord(0f, 0f);
+		renderer.addColor(col);
+		renderer.addVertex(a);
 	}
 
 	

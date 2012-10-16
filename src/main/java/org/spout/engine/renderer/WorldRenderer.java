@@ -60,7 +60,7 @@ public class WorldRenderer {
 
 	public void setup() {
 		world = client.getDefaultWorld();
-		// World world = client.getWorld("world");
+		//world = client.getWorlds().iterator().next();
 		material = (RenderMaterial) Spout.getFilesystem().getResource("material://Spout/resources/resources/materials/BasicMaterial.smt");
 
 		updateNearbyChunkMeshes(false);
@@ -85,8 +85,10 @@ public class WorldRenderer {
 	 */
 	public boolean updateNearbyChunkMeshes(boolean force) {
 		if (world == null) {
+			
 			world = client.getDefaultWorld();
 			if (world != null) System.out.println("World updated to " + world.getName() + "-" + world.getUID());
+			//else System.out.println("World is null!");
 		}
 
 		if (world == null) {
@@ -97,8 +99,11 @@ public class WorldRenderer {
 			return false;
 		}
 
-		int chunkViewDistance = client.getActivePlayer().getViewDistance() / 16;
-
+		// TODO: We will work with 1 chunk before trying to expand
+		int chunkViewDistance = 0;//client.getActivePlayer().getViewDistance() / 16;
+		//System.out.println("ChunkViewDistance ="+ ((int)client.getActivePlayer().getViewDistance() / 16));
+		
+		
 		Point currentPos = client.getActivePlayer().getTransform().getPosition();
 
 		int currentChunkX = currentPos.getChunkX();
@@ -226,9 +231,9 @@ public class WorldRenderer {
 			// at the world baby
 			// But here's my frustrum
 			// so cull me maybe?
-			if (client.getActiveCamera().getFrustum().intersects(renderer)) {
+			//if (client.getActiveCamera().getFrustum().intersects(renderer)) {
 				renderer.render(material);
-			}
+			//}
 		}
 	}
 }

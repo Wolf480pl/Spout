@@ -1,5 +1,5 @@
 # Valid shader descriptor.  Renderer will select the shader version depending on which mode the client is started in
-Shader: shader://Spout/resources/resources/shaders/guiShader.ssf
+Shader: shader://Spout/resources/resources/shaders/basic.ssf
 
 RenderState:
     # Whether or not to use the Depth Buffer for rendering this material.  Defaults to True.
@@ -32,5 +32,5 @@ RenderState:
 # Names match up to the name in the shader.
 
 MaterialParams:
-    Diffuse: texture://Spout/fallbacks/fallback.png
+    Diffuse: texture://Spout/resources/fallbacks/fallback.png
     BlendColor: color(1,1,1,1)

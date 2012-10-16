@@ -178,7 +178,7 @@ public abstract class BatchVertexRenderer implements Renderer {
 			throw new IllegalStateException("Cannot Render While Batching");
 		}
 		if (!flushed) {
-			throw new IllegalStateException("Cannon Render Without Flushing the Batch");
+			throw new IllegalStateException("Cannot Render Without Flushing the Batch");
 		}
 		
 	}
@@ -230,6 +230,7 @@ public abstract class BatchVertexRenderer implements Renderer {
 	
 	@Override
 	public void addColor(float r, float g, float b, float a) {
+		useColors = true;
 		colorBuffer.add(r);
 		colorBuffer.add(g);
 		colorBuffer.add(b);
@@ -249,7 +250,7 @@ public abstract class BatchVertexRenderer implements Renderer {
 	
 	@Override
 	public void addNormal(float x, float y, float z, float w) {
-		
+		useNormals = true;
 		normalBuffer.add(x);
 		normalBuffer.add(y);
 		normalBuffer.add(z);
@@ -277,12 +278,12 @@ public abstract class BatchVertexRenderer implements Renderer {
 	
 	@Override
 	public void addTexCoord(float u, float v) {
-		
+		useTextures = true;
 		uvBuffer.add(u);
 		uvBuffer.add(v);
 	}
 
-@Override
+	@Override
 	public void addTexCoord(Vector2 uv) {
 		addTexCoord(uv.getX(), uv.getY());
 	}
@@ -290,6 +291,7 @@ public abstract class BatchVertexRenderer implements Renderer {
 
 	public void dumpBuffers() {
 		System.out.println("BatchVertexRenderer Debug Ouput: Verts: " + numVertices + " Using {colors, normal, textures} {" + useColors + ", " + useNormals + ", " + useTextures + "}");
+		System.out.println("colors:"+colorBuffer.size()+", normals:"+normalBuffer.size()+", vertices:"+vertexBuffer.size());
 		for (int i = 0; i < numVertices; i++) {
 			int index = i * 4;
 

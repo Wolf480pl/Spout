@@ -24,48 +24,30 @@
  * License and see <http://www.spout.org/SpoutDevLicenseV1.txt> for the full license,
  * including the MIT license.
  */
-package org.spout.engine.entity.component;
+package org.spout.engine.input;
 
-import org.spout.api.component.components.EntityComponent;
-import org.spout.api.component.components.ModelComponent;
-import org.spout.api.component.components.TransformComponent;
-import org.spout.api.math.Matrix;
-import org.spout.api.render.RenderMaterial;
-import org.spout.engine.batcher.PrimitiveBatch;
-import org.spout.engine.mesh.BaseMesh;
+import java.io.File;
 
-public class EntityRendererComponent extends EntityComponent {
+import org.spout.api.exception.ConfigurationException;
+import org.spout.api.util.config.ConfigurationHolder;
+import org.spout.api.util.config.ConfigurationHolderConfiguration;
+import org.spout.api.util.config.yaml.YamlConfiguration;
+
+public class SpoutInputConfiguration extends ConfigurationHolderConfiguration{
+	public static final ConfigurationHolder FORWARD = new ConfigurationHolder("W", "forward");
+	public static final ConfigurationHolder BACKWARD = new ConfigurationHolder("S", "backward");
+	public static final ConfigurationHolder LEFT = new ConfigurationHolder("A", "left");
+	public static final ConfigurationHolder RIGHT = new ConfigurationHolder("D", "right");
+	public static final ConfigurationHolder UP = new ConfigurationHolder("SPACE", "up");
+	public static final ConfigurationHolder DOWN = new ConfigurationHolder("LSHIFT", "down");
 	
-	ModelComponent model;
-	TransformComponent transform;
-	
-	PrimitiveBatch batch;
-	
-	boolean dirty = true;
-	
+	public SpoutInputConfiguration() {
+		super(new YamlConfiguration(new File("config", "controls.yml")));
+	}
+
 	@Override
-	public void onAttached(){
-		model = getOwner().get(ModelComponent.class);
-		transform = getOwner().getTransform();
-		batch = new PrimitiveBatch();
+	public void load() throws ConfigurationException {
+		super.load();
+		super.save();
 	}
-	
-	
-	public void render() {
-		if(model == null) return;
-		BaseMesh m = (BaseMesh)model.getModel().getMesh();
-		
-		if(dirty) {
-			m.batch();
-			dirty = false;
-		}
-		Matrix modelMatrix = transform.getTransformation();
-		RenderMaterial mat = model.getModel().getRenderMaterial();
-		
-		mat.getShader().setUniform("Model", modelMatrix);		
-		
-		m.render(mat);
-		
-	}
-	
 }

@@ -40,12 +40,40 @@ public class GL11BatchVertexRenderer extends BatchVertexRenderer {
 
 	@Override
 	protected void doFlush() {
+		GL11.glNewList(displayList, GL11.GL_COMPILE);
 		
+		GL11.glBegin(renderMode);
+		
+		for (int i=0 ; i < numVertices ; i++) {
+			int index = i*4;
+			
+			if (useColors) {
+				GL11.glColor4f(colorBuffer.get(index), colorBuffer.get(index+1), colorBuffer.get(index+2), colorBuffer.get(index+3));
+			}
+			
+			if (useNormals) {
+				GL11.glNormal3f(normalBuffer.get(index), normalBuffer.get(index+1), normalBuffer.get(index+2));
+			}
+			
+			if (useTextures) {
+				GL11.glTexCoord2f(uvBuffer.get(i*2), uvBuffer.get(i*2+1));
+			}
+			
+			GL11.glVertex4f(vertexBuffer.get(index), vertexBuffer.get(index+1), vertexBuffer.get(index+2), vertexBuffer.get(index+3));
+		}
+		
+		GL11.glEnd();
+		
+		GL11.glEndList();
 	}
 
 	@Override
 	public void doRender(RenderMaterial material, int startVert, int endVert) {
-
+		material.assign();
+		GL11.glCallList(displayList);
+	}
 	
+	public void finalize() {
+		 GL11.glDeleteLists(displayList, 1);
 	}
 }

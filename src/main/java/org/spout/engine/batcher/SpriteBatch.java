@@ -26,9 +26,11 @@
  */
 package org.spout.engine.batcher;
 
+import java.awt.Color;
 import java.util.ArrayList;
 
 import org.spout.api.math.MathHelper;
+import org.spout.api.math.Rectangle;
 
 import org.lwjgl.opengl.GL11;
 import org.spout.api.math.Matrix;
@@ -38,7 +40,8 @@ import org.spout.engine.renderer.BatchVertexRenderer;
 
 public class SpriteBatch {
 	private class TextureRectangle {
-		public float x,y,w,h;
+		public Rectangle destination;
+		public Rectangle source;
 		public RenderMaterial material;
 	}
 	
@@ -50,7 +53,7 @@ public class SpriteBatch {
 	
 	public SpriteBatch() {
 		this.renderer = BatchVertexRenderer.constructNewBatch(GL11.GL_TRIANGLES);
-		this.projection = MathHelper.createOrthographic(1.0f, 0.0f, 0.0f, 1.0f, .1f, 1.0f);
+		this.projection = MathHelper.createIdentity();
 		this.view = MathHelper.createIdentity();
 	}
 	
@@ -62,19 +65,32 @@ public class SpriteBatch {
 		renderer.begin();
 		for(int i = 0; i < sprites.size(); i++) {
 			TextureRectangle rect = sprites.get(i);
-			renderer.addVertex(rect.x, rect.y);
-			renderer.addTexCoord(0, 0);
-			renderer.addVertex(rect.x + rect.w, rect.y);
-			renderer.addTexCoord(1, 0);
-			renderer.addVertex(rect.x, rect.y + rect.h);
-			renderer.addTexCoord(0, 1);
+
+			renderer.addVertex(rect.destination.getX(), rect.destination.getY() + rect.destination.getHeight());
+			renderer.addColor(Color.white);			
+			renderer.addTexCoord(rect.source.getX(), rect.source.getY());			
 			
-			renderer.addVertex(rect.x + rect.w, rect.y);
-			renderer.addTexCoord(1, 0);
-			renderer.addVertex(rect.x + rect.w, rect.y + rect.h);
-			renderer.addTexCoord(1, 1);
-			renderer.addVertex(rect.x, rect.y + rect.h);
-			renderer.addTexCoord(0, 1);	
+			renderer.addVertex(rect.destination.getX(), rect.destination.getY());
+			renderer.addColor(Color.white);
+			renderer.addTexCoord(rect.source.getX(), rect.source.getY() + rect.source.getHeight());
+			
+			renderer.addVertex(rect.destination.getX() + rect.destination.getWidth(), rect.destination.getY());
+			renderer.addColor(Color.white);			
+			renderer.addTexCoord(rect.source.getX() + rect.source.getWidth(), rect.source.getY() + rect.source.getHeight());
+			
+			
+			renderer.addVertex(rect.destination.getX(), rect.destination.getY() + rect.destination.getHeight());
+			renderer.addColor(Color.white);			
+			renderer.addTexCoord(rect.source.getX(), rect.source.getY());	
+			
+			renderer.addVertex(rect.destination.getX() + rect.destination.getWidth(), rect.destination.getY());
+			renderer.addColor(Color.white);			
+			renderer.addTexCoord(rect.source.getX() + rect.source.getWidth(), rect.source.getY() + rect.source.getHeight());
+			
+			renderer.addVertex(rect.destination.getX() + rect.destination.getWidth(), rect.destination.getY() + rect.destination.getHeight());
+			renderer.addColor(Color.white);			
+			renderer.addTexCoord(rect.source.getX() + rect.source.getWidth(), rect.source.getY());
+			
 			
 		}
 		renderer.end();
@@ -84,9 +100,9 @@ public class SpriteBatch {
 			TextureRectangle rect = sprites.get(i);
 			
 			rect.material.getShader().setUniform("View", this.view);
-			rect.material.getShader().setUniform("Projection", this.projection);		
-			System.out.println("rendering sprite " + i);
-			renderer.render(rect.material, (i * 6), (i * 6) + 5);			
+			rect.material.getShader().setUniform("Projection", this.projection);
+			rect.material.getShader().setUniform("Model", this.view); //View is always an identity matrix.
+			renderer.render(rect.material, (i * 6), 6);			
 			
 		}
 		GL11.glEnable(GL11.GL_DEPTH_TEST);
@@ -94,10 +110,8 @@ public class SpriteBatch {
 	
 	public void draw(RenderMaterial material, float x, float y, float w, float h) {
 		TextureRectangle rect = new TextureRectangle();
-		rect.x = x;
-		rect.y = y;
-		rect.w = w;
-		rect.h = h;
+		rect.destination = new Rectangle(x,y,w,h);
+		rect.source = new Rectangle(0, 0, 1, 1);
 		rect.material = material;
 		sprites.add(rect);
 	}

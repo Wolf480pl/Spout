@@ -110,6 +110,7 @@ import org.spout.engine.entity.EntityManager;
 import org.spout.engine.entity.SpoutPlayer;
 import org.spout.engine.filesystem.SharedFileSystem;
 import org.spout.engine.filesystem.WorldFiles;
+import org.spout.engine.input.SpoutInputConfiguration;
 import org.spout.engine.protocol.SpoutSession;
 import org.spout.engine.protocol.SpoutSessionRegistry;
 import org.spout.engine.protocol.builtin.SpoutProtocol;
@@ -149,6 +150,7 @@ public abstract class SpoutEngine extends AsyncManager implements Engine {
 	protected final ChannelGroup group = new DefaultChannelGroup();
 	private final AtomicBoolean setupComplete = new AtomicBoolean(false);
 	private final SpoutConfiguration config = new SpoutConfiguration();
+	private final SpoutInputConfiguration inputConfig = new SpoutInputConfiguration();
 	private final CompletionManager completions = new CompletionManagerImpl();
 	private final SyncedRootCommand rootCommand = new SyncedRootCommand(this);
 	private final File worldFolder = new File(".");
@@ -172,6 +174,7 @@ public abstract class SpoutEngine extends AsyncManager implements Engine {
 		this.arguments = args;
 		try {
 			config.load();
+			inputConfig.load();
 		} catch (ConfigurationException e) {
 			log("Error loading config: %0", Level.SEVERE, e.getMessage(), e);
 		}
@@ -653,7 +656,7 @@ public abstract class SpoutEngine extends AsyncManager implements Engine {
 			return null;
 		}
 
-		final World first = loadedWorlds.values().iterator().next();
+		World first = loadedWorlds.values().iterator().next(); 
 		return first;
 	}
 
@@ -737,20 +740,29 @@ public abstract class SpoutEngine extends AsyncManager implements Engine {
 
 	// Players should use weak map?
 	public Player addPlayer(String playerName, SpoutSession<?> session, int viewDistance) {
-		SpoutPlayer player = new SpoutPlayer(playerName, null, viewDistance);
+		SpoutPlayer player = WorldFiles.loadPlayerData(playerName);
+		boolean created = false;
+		if (player == null) {
+			player = new SpoutPlayer(playerName, null, viewDistance);
+			created = true;
+		}
 		SpoutPlayer oldPlayer = players.put(playerName, player);
-		
+
 		if (oldPlayer != null) {
 			oldPlayer.kick("Login occured from another client");
 		}
 
 		//Connect the player and set their transform to the default world's spawn.
-		player.connect(session, getDefaultWorld().getSpawnPoint());
+		player.connect(session, created ? getDefaultWorld().getSpawnPoint() : player.getTransform().getTransformLive());
+
 		//Spawn the player in the world
-		getDefaultWorld().spawnEntity(player);
-		((SpoutWorld) getDefaultWorld()).addPlayer(player);
+		World world = player.getTransform().getTransformLive().getPosition().getWorld();
+		world.spawnEntity(player);
+		((SpoutWorld) world).addPlayer(player);
+
 		//Set the player to the session
 		session.setPlayer(player);
+
 		//Initialize the session
 		session.getProtocol().initializeSession(session);
 		return player;

@@ -26,14 +26,18 @@
  */
 package org.spout.engine.entity;
 
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Level;
 
 import org.spout.api.Source;
+import org.spout.api.Spout;
 import org.spout.api.component.BaseComponentHolder;
 import org.spout.api.component.Component;
+import org.spout.api.component.components.CameraComponent;
 import org.spout.api.component.components.EntityComponent;
 import org.spout.api.component.components.NetworkComponent;
 import org.spout.api.component.components.PhysicsComponent;
@@ -80,7 +84,7 @@ public class SpoutEntity extends BaseComponentHolder implements Entity, Snapshot
 	private final UUID uid;
 	protected boolean justSpawned = true;
 
-	public SpoutEntity(Transform transform, int viewDistance, UUID uid, boolean load) {
+	public SpoutEntity(Transform transform, int viewDistance, UUID uid, boolean load, byte[] dataMap, Class<? extends Component> ...components) {
 		id.set(NOTSPAWNEDID);
 		add(TransformComponent.class);
 		add(NetworkComponent.class);
@@ -91,10 +95,13 @@ public class SpoutEntity extends BaseComponentHolder implements Entity, Snapshot
 			this.uid = UUID.randomUUID();
 		}
 
-		if (transform != null && load) {
+		if (transform != null) {
 			getTransform().setTransform(transform);
-			setupInitialChunk(transform);
 			getTransform().copySnapshot();
+		}
+
+		if (transform != null && load) {
+			setupInitialChunk(transform);
 		}
 
 		int maxViewDistance = SpoutConfiguration.VIEW_DISTANCE.getInt() * Chunk.BLOCKS.SIZE;
@@ -106,6 +113,18 @@ public class SpoutEntity extends BaseComponentHolder implements Entity, Snapshot
 		}
 
 		setViewDistance(viewDistance);
+		
+		if (dataMap != null) {
+			try {
+				this.getData().deserialize(dataMap);
+			} catch (IOException e) {
+				Spout.getLogger().log(Level.SEVERE, "Unable to deserialize entity data", e);
+			}
+		}
+		
+		if (components != null && components.length > 0) {
+			this.add(components);
+		}
 
 		//Set all the initial snapshot values
 		//Ensures there are no null/wrong snapshot values for the first tick
@@ -113,7 +132,7 @@ public class SpoutEntity extends BaseComponentHolder implements Entity, Snapshot
 	}
 
 	public SpoutEntity(Transform transform, int viewDistance) {
-		this(transform, viewDistance, null, true);
+		this(transform, viewDistance, null, true, null, (Class<? extends Component>[])null);
 	}
 
 	public SpoutEntity(Transform transform) {
@@ -126,6 +145,7 @@ public class SpoutEntity extends BaseComponentHolder implements Entity, Snapshot
 
 	@Override
 	public void onTick(float dt) {
+		//System.out.println("entity ticked");
 		for (Component component : values()) {
 			component.tick(dt);
 		}
@@ -162,6 +182,8 @@ public class SpoutEntity extends BaseComponentHolder implements Entity, Snapshot
 	}
 
 	public void finalizeRun() {
+		SpoutChunk chunkLive = (SpoutChunk) getChunkLive();
+		
 		//Entity was removed so automatically remove observer/components
 		if (isRemoved()) {
 			removeObserver();
@@ -169,11 +191,26 @@ public class SpoutEntity extends BaseComponentHolder implements Entity, Snapshot
 			for (Component component : Component.dependSort(values())) {
 				detach(component.getClass());
 			}
+			//Track entities w/their chunks
+			if (chunkLive != null) {
+				chunkLive.onEntityLeave(this);
+			}
 			return;
 		}
+		
+		SpoutChunk chunk = (SpoutChunk) getChunk();
 
-		Chunk chunk = getChunk();
-		SpoutChunk chunkLive = (SpoutChunk) getChunkLive();
+		//Track entities w/their chunks, for saving purposes
+		if (!(this instanceof SpoutPlayer)) {
+			if (chunk != chunkLive) {
+				if (chunk != null) {
+					chunk.onEntityLeave(this);
+				}
+				if (chunkLive != null) {
+					chunk.onEntityEnter(this);
+				}
+			}
+		}
 
 		//Move entity from Region A to Region B
 		if (chunkLive != null && (chunk == null || chunk.getRegion() != chunkLive.getRegion())) {
@@ -290,7 +327,7 @@ public class SpoutEntity extends BaseComponentHolder implements Entity, Snapshot
 		if (isObserver()) {
 			updateObserver();
 		}
-		SpoutRegion region = (SpoutRegion) getChunkLive().getRegion();
+		SpoutRegion region = (SpoutRegion) getTransform().getTransformLive().getPosition().getChunk(LoadOption.LOAD_GEN).getRegion();
 		entityManager.set(region.getEntityManager());
 	}
 

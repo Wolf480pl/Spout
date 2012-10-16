@@ -26,6 +26,9 @@
  */
 package org.spout.engine.world;
 
+import gnu.trove.map.TShortObjectMap;
+import gnu.trove.map.hash.TShortObjectHashMap;
+
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -45,11 +48,11 @@ import java.util.logging.Level;
 
 import org.spout.api.Source;
 import org.spout.api.Spout;
+import org.spout.api.component.ChunkComponentOwner;
 import org.spout.api.component.components.BlockComponent;
 import org.spout.api.datatable.ManagedHashMap;
 import org.spout.api.datatable.SerializableMap;
 import org.spout.api.entity.Entity;
-import org.spout.api.entity.Player;
 import org.spout.api.event.block.BlockChangeEvent;
 import org.spout.api.generator.Populator;
 import org.spout.api.generator.WorldGeneratorUtils;
@@ -67,7 +70,6 @@ import org.spout.api.geo.cuboid.Region;
 import org.spout.api.material.BlockMaterial;
 import org.spout.api.material.DynamicMaterial;
 import org.spout.api.material.DynamicUpdateEntry;
-import org.spout.api.material.Material;
 import org.spout.api.material.MaterialRegistry;
 import org.spout.api.material.block.BlockFullState;
 import org.spout.api.material.block.BlockSnapshot;
@@ -77,8 +79,9 @@ import org.spout.api.math.Vector3;
 import org.spout.api.scheduler.TickStage;
 import org.spout.api.util.cuboid.CuboidBuffer;
 import org.spout.api.util.hashing.NibblePairHashed;
+import org.spout.api.util.hashing.NibbleQuadHashed;
 import org.spout.api.util.map.concurrent.AtomicBlockStore;
-import org.spout.api.util.map.concurrent.AtomicBlockStoreImpl;
+import org.spout.api.util.map.concurrent.palette.AtomicPaletteBlockStore;
 import org.spout.api.util.set.TNibbleQuadHashSet;
 import org.spout.engine.SpoutConfiguration;
 import org.spout.engine.entity.SpoutEntity;
@@ -100,7 +103,12 @@ public abstract class SpoutChunk extends Chunk implements Snapshotable {
 	private final ConcurrentLinkedQueue<SpoutEntity> expiredObserversQueue = new ConcurrentLinkedQueue<SpoutEntity>();
 	private final LinkedHashSet<SpoutEntity> expiredObservers = new LinkedHashSet<SpoutEntity>();
 	private final Set<SpoutEntity> unmodifiableExpiredObservers = Collections.unmodifiableSet(expiredObservers);
-	
+
+	/**
+	 * Not thread safe, synchronize on access
+	 */
+	private final TShortObjectHashMap<BlockComponent> blockComponents = new TShortObjectHashMap<BlockComponent>();
+
 	/**
 	 * Multi-thread write access to the block store is only allowed during the
 	 * allowed stages. During the restricted stages, only the region thread may
@@ -225,7 +233,7 @@ public abstract class SpoutChunk extends Chunk implements Snapshotable {
 	public SpoutChunk(SpoutWorld world, SpoutRegion region, float x, float y, float z, PopulationState popState, short[] blocks, short[] data, byte[] skyLight, byte[] blockLight, ManagedHashMap extraData) {
 		super(world, x * BLOCKS.SIZE, y * BLOCKS.SIZE, z * BLOCKS.SIZE);
 		parentRegion = region;
-		blockStore = new AtomicBlockStoreImpl(BLOCKS.BITS, 10, blocks, data);
+		blockStore = new AtomicPaletteBlockStore(BLOCKS.BITS, 10, blocks, data);
 		this.populationState = new AtomicReference<PopulationState>(popState);
 
 		if (skyLight == null) {
@@ -317,8 +325,12 @@ public abstract class SpoutChunk extends Chunk implements Snapshotable {
 		int oldState = blockStore.getAndSetBlock(x, y, z, newId, newData);
 		short oldData = BlockFullState.getData(oldState);
 
-		Material m = MaterialRegistry.get(oldState);
-		BlockMaterial oldMaterial = (BlockMaterial) m;
+		BlockMaterial oldMaterial = (BlockMaterial) MaterialRegistry.get(oldState);
+		
+		//TODO: this is not an atomic operation, tearing possible...
+		if (material.getId() != oldMaterial.getId()) {
+			setBlockComponent(x, y, z, material.getBlockComponent());
+		}
 
 		int oldheight = column.getSurfaceHeight(x, z);
 		y += this.getBlockY();
@@ -1310,6 +1322,15 @@ public abstract class SpoutChunk extends Chunk implements Snapshotable {
 		return entities;
 	}
 
+	public boolean hasEntities() {
+		for (Entity e : parentRegion.getEntityManager().getAllLive()) {
+			if (((SpoutEntity) e).getChunkLive() == this) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	public void deregisterFromColumn(boolean save) {
 		if (columnRegistered.compareAndSet(true, false)) {
 			column.deregisterChunk(save);
@@ -1358,14 +1379,52 @@ public abstract class SpoutChunk extends Chunk implements Snapshotable {
 		}
 	}
 
-	@Override
-	public void setBlockComponent(int x, int y, int z, BlockComponent component) {
-		getRegion().setBlockComponent(x, y, z, component);
+	/**
+	 * Not thread-safe, must synchronize on access
+	 * 
+	 * @return block components
+	 */
+	public TShortObjectMap<BlockComponent> getBlockComponents() {
+		return blockComponents;
+	}
+
+	private void setBlockComponent(int x, int y, int z, BlockComponent component) {
+		x &= BLOCKS.MASK;
+		y &= BLOCKS.MASK;
+		z &= BLOCKS.MASK;
+		synchronized(blockComponents) {
+			if (component != null) {
+				blockComponents.put(NibbleQuadHashed.key(x, y, z, 0), component);
+				component.attachTo(new ChunkComponentOwner(this, x + getBlockX(), y + getBlockY(), z + getBlockZ()));
+				component.onAttached();
+			} else {
+				BlockComponent c = blockComponents.remove(NibbleQuadHashed.key(x, y, z, 0));
+				if (c != null) {
+					c.onDetached();
+				}
+			}
+		}
 	}
 
 	@Override
 	public BlockComponent getBlockComponent(int x, int y, int z) {
-		return getRegion().getBlockComponent(x, y, z);
+		synchronized(blockComponents) {
+			return blockComponents.get(NibbleQuadHashed.key(x & BLOCKS.MASK, y & BLOCKS.MASK, z & BLOCKS.MASK, 0));
+		}
+	}
+
+	protected void tickBlockComponents(float dt) {
+		synchronized(blockComponents) {
+			for (BlockComponent c : blockComponents.valueCollection()) {
+				try {
+					if (c.canTick()) {
+						c.tick(dt);
+					}
+				} catch (Exception e) {
+					Spout.getLogger().log(Level.SEVERE, "Unhandled exception while ticking block component", e);
+				}
+			}
+		}
 	}
 
 	@Override
@@ -1660,4 +1719,24 @@ public abstract class SpoutChunk extends Chunk implements Snapshotable {
 	protected int getAutosaveTicks() {
 		return autosaveTicks.get();
 	}
+
+	/**
+	 * Called when an entity enters the chunk.
+	 * This method is NOT called for players.
+	 * 
+	 * This method occurs during finalizeRun
+	 * 
+	 * @param e
+	 */
+	public abstract void onEntityEnter(SpoutEntity e);
+
+	/**
+	 * Called when an entity leaves the chunk.
+	 * This method is NOT called for players.
+	 * 
+	 * This method occurs during finalizeRun
+	 * 
+	 * @param e
+	 */
+	public abstract void onEntityLeave(SpoutEntity e);
 }

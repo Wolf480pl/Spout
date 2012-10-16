@@ -31,8 +31,12 @@ import java.nio.FloatBuffer;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
+import org.spout.api.Spout;
+import org.spout.api.geo.discrete.Point;
 import org.spout.api.math.Matrix;
+import org.spout.api.math.Quaternion;
 
+import org.spout.engine.SpoutClient;
 import org.spout.engine.renderer.shader.variables.Mat4ShaderVariable;
 
 public class BasicShader extends ClientShader {
@@ -52,6 +56,10 @@ public class BasicShader extends ClientShader {
 		}
 
 		if (compatabilityMode) {
+			if (textures.size() > 0) {
+				textures.values().iterator().next().getTexture().bind();
+			}
+			
 			GL11.glMatrixMode(GL11.GL_PROJECTION);
 			matrixBuffer.clear();
 			matrixBuffer.put(getProjectionMatrix().toArray());
