@@ -92,7 +92,6 @@ import org.spout.api.plugin.Platform;
 import org.spout.api.plugin.Plugin;
 import org.spout.api.plugin.PluginManager;
 import org.spout.api.plugin.ServiceManager;
-import org.spout.api.plugin.security.CommonSecurityManager;
 import org.spout.api.protocol.Protocol;
 import org.spout.api.protocol.SessionRegistry;
 import org.spout.api.scheduler.TaskManager;
@@ -137,8 +136,7 @@ public abstract class SpoutEngine implements AsyncManager, Engine {
 	private static final Logger logger = Logger.getLogger("Spout");
 	private final String name = "Spout Engine";
 	private final Random random = new Random();
-	private final CommonSecurityManager securityManager = new CommonSecurityManager(0); //TODO Need to integrate this/evaluate security in the engine.
-	private final CommonPluginManager pluginManager = new CommonPluginManager(this, securityManager, 0.0);
+	private final CommonPluginManager pluginManager = new CommonPluginManager(this);
 	private final ConsoleManager consoleManager;
 	private final EventManager eventManager = new SimpleEventManager();
 	private final RecipeManager recipeManager = new SimpleRecipeManager();
