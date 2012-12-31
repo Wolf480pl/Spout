@@ -26,10 +26,15 @@
  */
 package org.spout.engine;
 
+import java.awt.Desktop;
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.net.URISyntaxException;
+import java.security.AccessController;
 import java.security.CodeSource;
+import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.UUID;
@@ -78,6 +83,7 @@ import org.spout.api.model.animation.Animation;
 import org.spout.api.model.animation.AnimationPlayed;
 import org.spout.api.plugin.Platform;
 import org.spout.api.plugin.PluginStore;
+import org.spout.api.plugin.security.BrowserPermission;
 import org.spout.api.protocol.CommonPipelineFactory;
 import org.spout.api.protocol.PortBinding;
 import org.spout.api.protocol.Protocol;
@@ -120,7 +126,7 @@ public class SpoutClient extends SpoutEngine implements Client {
 	private SpoutInputManager inputManager;
 
 	public SpoutClient() {
-		this.filesystem = new ClientFileSystem();
+		filesystem = new ClientFileSystem();
 	}
 
 	@Override
@@ -147,7 +153,7 @@ public class SpoutClient extends SpoutEngine implements Client {
 		bootstrap.setPipelineFactory(pipelineFactory);
 		super.init(args);
 
-		this.ccoverride = args.ccoverride;
+		ccoverride = args.ccoverride;
 
 		inputManager = new SpoutInputManager();
 	}
@@ -281,7 +287,7 @@ public class SpoutClient extends SpoutEngine implements Client {
 
 	@Override
 	public SpoutInputManager getInputManager() {
-		return this.inputManager;
+		return inputManager;
 	}
 
 	@Override
@@ -304,7 +310,7 @@ public class SpoutClient extends SpoutEngine implements Client {
 				stopMessage = stopEvent.getMessage();
 
 				bootstrap.getFactory().releaseExternalResources();
-				boundProtocols.clear();
+				SpoutClient.this.boundProtocols.clear();
 			}
 		};
 		getScheduler().submitFinalTask(finalTask, true);
@@ -399,7 +405,7 @@ public class SpoutClient extends SpoutEngine implements Client {
 	}
 
 	public void disconnected() {
-		Session sess = this.session.getAndSet(null);
+		Session sess = session.getAndSet(null);
 		if (sess != null) {
 			getSessionRegistry().remove(sess);
 		}
@@ -475,5 +481,26 @@ public class SpoutClient extends SpoutEngine implements Client {
 
 	public SpoutRenderer getRenderer() {
 		return renderer;
+	}
+
+	@Override
+	public void openBrowser(final URI uri) throws IOException {
+		System.getSecurityManager().checkPermission(new BrowserPermission(uri.getHost()));
+		String protocol = uri.toURL().getProtocol();
+		if (protocol.equalsIgnoreCase("http") || protocol.equalsIgnoreCase("https")) {
+			try {
+				AccessController.doPrivileged(new PrivilegedExceptionAction() {
+					@Override
+					public Object run() throws IOException {
+						Desktop.getDesktop().browse(uri);
+						return null;
+					}
+				});
+			} catch (PrivilegedActionException e) {
+				throw (IOException) e.getException();
+			}
+		} else {
+			throw new IllegalArgumentException("Protocol of the URI can be only http or https");
+		}
 	}
 }
