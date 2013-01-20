@@ -35,6 +35,7 @@ import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.security.Policy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -54,6 +55,7 @@ import org.apache.commons.io.filefilter.DirectoryFileFilter;
 import org.jboss.netty.channel.group.ChannelGroup;
 import org.jboss.netty.channel.group.ChannelGroupFuture;
 import org.jboss.netty.channel.group.DefaultChannelGroup;
+
 import org.spout.api.Engine;
 import org.spout.api.Spout;
 import org.spout.api.chat.channel.ChatChannelFactory;
@@ -92,12 +94,14 @@ import org.spout.api.plugin.Platform;
 import org.spout.api.plugin.Plugin;
 import org.spout.api.plugin.PluginManager;
 import org.spout.api.plugin.ServiceManager;
+import org.spout.api.plugin.security.CommonPolicy;
 import org.spout.api.protocol.Protocol;
 import org.spout.api.protocol.SessionRegistry;
 import org.spout.api.scheduler.TaskManager;
 import org.spout.api.scheduler.TaskPriority;
 import org.spout.api.util.StringMap;
 import org.spout.api.util.StringUtil;
+
 import org.spout.engine.chat.SpoutChatChannelFactory;
 import org.spout.engine.chat.console.ConsoleManager;
 import org.spout.engine.chat.console.JLineConsole;
@@ -188,6 +192,12 @@ public abstract class SpoutEngine implements AsyncManager, Engine {
 
 		defaultPerms = new DefaultPermissions(this, new File(SharedFileSystem.getConfigDirectory(), "permissions.yml"));
 		getDefaultPermissions().addDefaultPermission(STANDARD_BROADCAST_PERMISSION);
+
+		if (args.security) {
+			File clearances = new File(SharedFileSystem.getConfigDirectory(), "clearances.yml");
+			Policy.setPolicy(new CommonPolicy(this, clearances));
+			System.setSecurityManager(new SecurityManager());
+		}
 
 		if (debugMode()) {
 			new TicklockMonitor().start();
@@ -617,13 +627,13 @@ public abstract class SpoutEngine implements AsyncManager, Engine {
 	@Override
 	public void startTickRun(int stage, long delta) {
 		switch (stage) {
-			case 0:
-				engineItemMap.save();
-				engineBiomeMap.save();
-				break;
+		case 0:
+			engineItemMap.save();
+			engineBiomeMap.save();
+			break;
 		}
 	}
-	
+
 	@Override
 	public int getMaxStage() {
 		return 0;
@@ -846,6 +856,7 @@ public abstract class SpoutEngine implements AsyncManager, Engine {
 		return completions;
 	}
 
+	@Override
 	public DefaultPermissions getDefaultPermissions() {
 		return defaultPerms;
 	}
@@ -872,17 +883,20 @@ public abstract class SpoutEngine implements AsyncManager, Engine {
 			registry.pulse();
 		}
 	}
-	
+
 	private Thread executionThread;
-	
+
+	@Override
 	public Thread getExecutionThread() {
 		return executionThread;
 	}
-	
+
+	@Override
 	public void setExecutionThread(Thread t) {
 		this.executionThread = t;
 	}
-	
+
+	@Override
 	public int getSequence() {
 		return 0;
 	}

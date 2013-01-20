@@ -30,6 +30,7 @@ import java.io.File;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParameterDescription;
 
 import org.spout.api.Spout;
 import org.spout.api.plugin.Platform;
@@ -53,6 +54,8 @@ public class SpoutApplication {
 	public boolean ccoverride = false;
 	@Parameter(names = {"--path"}, description = "Override path for the client")
 	public String path = null;
+	@Parameter(names = "--security", description = "Override state of plugin security system", arity = 1)
+	boolean security = false;
 
 	public static void main(String[] args) {
 		try {
@@ -66,11 +69,20 @@ public class SpoutApplication {
 				}
 				SharedFileSystem.setParentDirectory(dir);
 			}
+			ParameterDescription securityParam = null;
+			for (ParameterDescription pd : commands.getParameters()) {
+				if (pd.getNames().contains("--security")) {
+					securityParam = pd;
+				}
+			}
 
 			SpoutEngine engine;
 			switch (main.platform) {
 				case CLIENT:
 					engine = new SpoutClient();
+					if ((securityParam != null) && (!securityParam.isAssigned())) {
+						//main.security = true;		// The security should be enabled on client by default, but not yet.
+					}
 					break;
 				case SERVER:
 					engine = new SpoutServer();
