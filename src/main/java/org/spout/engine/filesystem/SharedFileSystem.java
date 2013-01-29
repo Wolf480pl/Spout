@@ -27,9 +27,12 @@
 package org.spout.engine.filesystem;
 
 import java.io.File;
+import java.io.FilePermission;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.security.PermissionCollection;
+import java.security.Permissions;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -37,6 +40,7 @@ import java.util.Map;
 
 import org.spout.api.FileSystem;
 import org.spout.api.Spout;
+import org.spout.api.plugin.Plugin;
 import org.spout.api.resource.Resource;
 import org.spout.api.resource.ResourceLoader;
 import org.spout.api.resource.ResourceNotFoundException;
@@ -67,7 +71,7 @@ public class SharedFileSystem implements FileSystem {
 	public synchronized static File getPluginDirectory() {
 		return new File(parentDir, "plugins");
 	}
-	
+
 	public synchronized static File getResourceDirectory() {
 		return new File(parentDir, "resources");
 	}
@@ -122,6 +126,15 @@ public class SharedFileSystem implements FileSystem {
 	@Override
 	public void postStartup() {
 		loadFallbacks();
+	}
+
+	@Override
+	public PermissionCollection getPluginResourcePermissions(Plugin plugin) {
+		Permissions perms = new Permissions();
+		perms.add(new FilePermission(getPluginDirectory().getPath() + File.pathSeparator + "-", "read"));
+		perms.add(new FilePermission(getResourceDirectory().getPath() + File.pathSeparator + "-", "read"));
+		perms.add(new FilePermission(getCacheDirectory().getPath() + File.pathSeparator + "-", "read"));
+		return perms;
 	}
 
 	private void loadFallbacks() {
